@@ -16,9 +16,9 @@ const GRAPH      = "https://graph.facebook.com/v21.0";
 
 // captions — edit freely. \n = line break.
 const CAPTIONS = {
-  seqld: "South East Queensland\n#bloombyday\n\nBloombyday.com",
-  nsw:   "NSW\n#bloombyday\n\nBloombyday.com",
-  wa:    "WA\n#bloombyday\n\nBloombyday.com",
+  seqld: "South East Queensland\n#bloombyday #algae #freediving #spearfishing #goldcoast #sunshinecoast #moretonbay #oceandata\n\nBloombyday.com",
+  nsw:   "NSW\n#bloombyday #algae #freediving #spearfishing #sydney #nsw #oceandata #divensw\n\nBloombyday.com",
+  wa:    "WA\n#bloombyday #algae #freediving #spearfishing #westernaustralia #ningaloo #oceandata #divewa\n\nBloombyday.com",
 };
 
 if (!IG_USER_ID || !TOKEN) { console.error("Missing IG_USER_ID or IG_ACCESS_TOKEN"); process.exit(1); }
