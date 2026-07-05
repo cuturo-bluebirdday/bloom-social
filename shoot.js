@@ -24,18 +24,18 @@ const CLEAN_CSS = `
   .leaflet-marker-pane       { display:none !important; }   /* dive-spot dots + bridge coral pin */
   .leaflet-control-container { display:none !important; }   /* leaflet zoom/attribution only */
 
-  /* keep the side control stack in view for the shot */
+  /* square frame = no crop; keep the side control stack lower-left where it lives */
   .ctlstack {
     display:flex !important; visibility:visible !important; opacity:1 !important;
-    left:16px !important; bottom:80px !important; z-index:2000 !important;
+    left:16px !important; bottom:24px !important; top:auto !important; z-index:2000 !important;
   }
 `;
 
 (async () => {
   if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch();
-  // 1080x1350 = Instagram's ideal 4:5 portrait feed size
-  const page = await browser.newPage({ viewport: { width: 1080, height: 1350 } });
+  // 1080x1080 = square — what you shoot is exactly what the IG grid shows
+  const page = await browser.newPage({ viewport: { width: 1080, height: 1080 } });
 
   const done = [];
   for (const s of SHOTS) {
