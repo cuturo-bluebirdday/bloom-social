@@ -9,9 +9,9 @@ const DATE = new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Brisb
 const OUT = "social";
 
 const SHOTS = [
-  { name: "seqld", url: "https://bloombyday.com/?lat=-27.8140&lon=153.0016&zoom=11" },
-  { name: "nsw",   url: "https://bloombyday.com/?lat=-34.9876&lon=151.3691&zoom=11" },
-  { name: "wa",    url: "https://bloombyday.com/?lat=-27.9846&lon=113.3965&zoom=10" },
+  { name: "seqld", url: "https://bloombyday.com/?lat=-27.8140&lon=153.0016&zoom=10" },
+  { name: "nsw",   url: "https://bloombyday.com/?lat=-34.9876&lon=151.3691&zoom=10" },
+  { name: "wa",    url: "https://bloombyday.com/?lat=-27.9846&lon=113.3965&zoom=9" },
 ];
 
 // CSS injected before the screenshot. Removes only the disclaimer, the
