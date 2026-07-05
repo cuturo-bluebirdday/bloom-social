@@ -9,9 +9,9 @@ const DATE = new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Brisb
 const OUT = "social";
 
 const SHOTS = [
-  { name: "seqld", url: "https://bloombyday.com/?lat=-27.8140&lon=153.2000&zoom=10" },
-  { name: "nsw",   url: "https://bloombyday.com/?lat=-34.5000&lon=151.4000&zoom=10" },
-  { name: "wa",    url: "https://bloombyday.com/?lat=-27.9846&lon=113.6000&zoom=9" },
+  { name: "seqld", url: "https://bloombyday.com/?lat=-27.8140&lon=153.0016&zoom=7" },
+  { name: "nsw",   url: "https://bloombyday.com/?lat=-34.9876&lon=151.3691&zoom=7" },
+  { name: "wa",    url: "https://bloombyday.com/?lat=-27.9846&lon=113.3965&zoom=6" },
 ];
 
 // CSS injected before the screenshot. Removes only the disclaimer, the
@@ -35,8 +35,8 @@ const CLEAN_CSS = `
 (async () => {
   if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch();
-  // 1080x1350 = portrait 4:5 (matches the existing IG grid)
-  const page = await browser.newPage({ viewport: { width: 1080, height: 1350 } });
+  // logical 360x450 @ 3x DPR = 1080x1350px — renders like a phone at the original zoom levels
+  const page = await browser.newPage({ viewport: { width: 360, height: 450 }, deviceScaleFactor: 3 });
 
   const done = [];
   for (const s of SHOTS) {
