@@ -14,18 +14,21 @@ const SHOTS = [
   { name: "wa",    url: "https://bloombyday.com/?lat=-27.9846&lon=113.3965&zoom=6" },
 ];
 
-// CSS injected before the screenshot to clean the frame to a pure map.
-// (Eyeball the run — add any selector that still shows.)
+// CSS injected before the screenshot. Removes only the disclaimer, the
+// dive-spot dots, and the deep-link popup — and makes sure the side control
+// stack is clearly visible (it sells the tool as interactive).
 const CLEAN_CSS = `
   .beta-bar, #betabar        { display:none !important; }   /* disclaimer banner */
-  .ctlstack                  { display:none !important; }   /* left control stack */
   #stamp, .stamp             { display:none !important; }   /* footer credits line */
-  .leaflet-control-container { display:none !important; }   /* zoom/attribution */
-  .leaflet-popup-pane        { display:none !important; }   /* the 'back to Bluebird' popup */
-  .leaflet-marker-pane,
-  .leaflet-shadow-pane       { display:none !important; }   /* dive-spot dots + bridge pin */
-  #scale, .scale-ref         { display:none !important; }   /* the km scale */
-  #intime, .intime, .timebtn { display:none !important; }   /* IN TIME button */
+  .leaflet-popup-pane        { display:none !important; }   /* 'back to Bluebird' popup box */
+  .leaflet-marker-pane       { display:none !important; }   /* dive-spot dots + bridge coral pin */
+  .leaflet-control-container { display:none !important; }   /* leaflet zoom/attribution only */
+
+  /* keep the side control stack in view for the shot */
+  .ctlstack {
+    display:flex !important; visibility:visible !important; opacity:1 !important;
+    left:16px !important; bottom:80px !important; z-index:2000 !important;
+  }
 `;
 
 (async () => {
