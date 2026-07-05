@@ -1,0 +1,44 @@
+name: Bloom Social (daily Instagram)
+
+# Runs daily at 6pm Brisbane. Screenshots the 3 map regions, commits them
+# (so they get public raw URLs), then posts them to Instagram.
+
+on:
+  workflow_dispatch:        # lets you run it manually to test
+  schedule:
+    - cron: '0 8 * * *'     # 08:00 UTC = 18:00 (6pm) Brisbane (AEST, no DST)
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # needed to commit the screenshots back
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright + Chromium
+        run: |
+          npm init -y >/dev/null 2>&1 || true
+          npm install playwright
+          npx playwright install --with-deps chromium
+
+      - name: Screenshot the maps
+        run: node shoot.js
+
+      - name: Commit screenshots (gives them public URLs)
+        run: |
+          git config user.name  "bloom-bot"
+          git config user.email "bot@bloombyday.com"
+          git add social/
+          git commit -m "social: $(TZ=Australia/Brisbane date +%F)" || echo "nothing to commit"
+          git push
+
+      - name: Post to Instagram
+        env:
+          IG_USER_ID:      ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+        run: node post_instagram.js
