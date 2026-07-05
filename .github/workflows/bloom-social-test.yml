@@ -1,0 +1,43 @@
+name: Bloom Social - TEST (screenshots only)
+
+# PHASE 1: just proves the screenshots work. No Instagram, no secrets needed.
+# Run it manually (Actions - this workflow - Run workflow), then download the
+# 'screenshots' artifact to see the 3 images. Once they look clean, we add posting.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  shoot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright + Chromium
+        run: |
+          npm init -y >/dev/null 2>&1 || true
+          npm install playwright
+          npx playwright install --with-deps chromium
+
+      - name: Screenshot the maps
+        run: node shoot.js
+
+      - name: Upload screenshots to inspect
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: social/*.png
+
+      - name: Also commit them to the repo
+        run: |
+          git config user.name  "bloom-bot"
+          git config user.email "bot@bloombyday.com"
+          git add social/
+          git commit -m "test screenshots $(TZ=Australia/Brisbane date +%F)" || echo "nothing to commit"
+          git push
