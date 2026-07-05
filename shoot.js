@@ -5,9 +5,9 @@ const DATE = new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Brisb
 const OUT = "social";
 
 const SHOTS = [
-  { name: "seqld", url: "https://bloombyday.com/?lat=-27.8140&lon=153.0016&zoom=7" },
-  { name: "nsw",   url: "https://bloombyday.com/?lat=-34.9876&lon=151.3691&zoom=7" },
-  { name: "wa",    url: "https://bloombyday.com/?lat=-27.9846&lon=113.3965&zoom=6" },
+  { name: "seqld", url: "https://bloombyday.com/?lat=-26.9759&lon=153.9404&zoom=7" },
+  { name: "nsw",   url: "https://bloombyday.com/?lat=-33.7255&lon=151.5894&zoom=9" },
+  { name: "wa",    url: "https://bloombyday.com/?lat=-30.0548&lon=113.6206&zoom=7" },
 ];
 
 const CLEAN_CSS = `
