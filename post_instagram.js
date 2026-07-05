@@ -16,9 +16,9 @@ const GRAPH      = "https://graph.facebook.com/v21.0";
 
 // captions — edit freely. \n = line break.
 const CAPTIONS = {
-  seqld: "🔱 South East QLD — live algae & water clarity, seen from space.\n\nRead the water before you dive. Free · no ads · bloombyday.com\n\n#freediving #spearfishing #goldcoast #sunshinecoast #brisbane #ocean #scuba #diving #algae",
-  nsw:   "🔱 NSW coast — live algae & water clarity, seen from space.\n\nRead the water before you dive. Free · no ads · bloombyday.com\n\n#freediving #spearfishing #nsw #sydney #ocean #scuba #diving #algae",
-  wa:    "🔱 Western Australia — Ningaloo & the coral coast, live from space.\n\nRead the water before you dive. Free · no ads · bloombyday.com\n\n#freediving #spearfishing #ningaloo #westernaustralia #ocean #scuba #diving #algae",
+  seqld: "South East Queensland\n#bloombyday\n\nBloombyday.com",
+  nsw:   "NSW\n#bloombyday\n\nBloombyday.com",
+  wa:    "WA\n#bloombyday\n\nBloombyday.com",
 };
 
 if (!IG_USER_ID || !TOKEN) { console.error("Missing IG_USER_ID or IG_ACCESS_TOKEN"); process.exit(1); }
