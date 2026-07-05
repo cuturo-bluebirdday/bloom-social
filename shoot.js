@@ -40,9 +40,10 @@ const CLEAN_CSS = `
   const done = [];
   for (const s of SHOTS) {
     console.log("shooting", s.name, s.url);
-    await page.goto(s.url, { waitUntil: "load", timeout: 60000 });
-    // let Leaflet tiles + the bloom overlay actually paint (dynamic app, no networkidle)
-    await page.waitForTimeout(10000);
+    await page.goto(s.url, { waitUntil: "domcontentloaded", timeout: 45000 });
+    // a live map streams tiles + animates currents, so 'load' may never fire.
+    // wait a fixed spell for the bloom overlay + tiles to actually paint instead.
+    await page.waitForTimeout(12000);
     await page.addStyleTag({ content: CLEAN_CSS });
     await page.waitForTimeout(500);
     const file = `${OUT}/${s.name}-${DATE}.png`;
