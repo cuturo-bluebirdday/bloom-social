@@ -6,8 +6,8 @@ const OUT = "social";
 
 const SHOTS = [
   { name: "seqld", url: "https://bloombyday.com/?lat=-27.8140&lon=153.0016&zoom=9" },
-  { name: "nsw",   url: "https://bloombyday.com/?lat=-34.9876&lon=151.3691&zoom=9" },
-  { name: "wa",    url: "https://bloombyday.com/?lat=-27.9846&lon=113.3965&zoom=8" },
+  { name: "nsw",   url: "https://bloombyday.com/?lat=-34.9876&lon=151.6500&zoom=10" },
+  { name: "wa",    url: "https://bloombyday.com/?lat=-27.9846&lon=113.1000&zoom=9" },
 ];
 
 // hides UI chrome, keeps the clean map
