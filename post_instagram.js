@@ -20,8 +20,8 @@ const GRAPH      = "https://graph.facebook.com/v21.0";
 
 // captions — edit freely. \n = line break.
 const CAPTIONS = {
-  seqld: "South East Queensland\nEutrophication — when nutrients from land reach the sea and feed algae. This is what you're watching.\n#bloombyday #algae #eutrophication #freediving #spearfishing #goldcoast #sunshinecoast #moretonbay #oceandata\n\nBloombyday.com",
-  nsw:   "NSW\nEutrophication — when nutrients from land reach the sea and feed algae. This is what you're watching.\n#bloombyday #algae #eutrophication #freediving #spearfishing #sydney #nsw #oceandata #divensw\n\nBloombyday.com",
+  seqld: "South East Queensland\nEutrophication — when nutrients from land reach the sea and feed algae.\n#bloombyday #algae #eutrophication #freediving #spearfishing #goldcoast #sunshinecoast #moretonbay #oceandata\n\nBloombyday.com",
+  nsw:   "NSW\nEutrophication — when nutrients from land reach the sea and feed algae.\n#bloombyday #algae #eutrophication #freediving #spearfishing #sydney #nsw #oceandata #divensw\n\nBloombyday.com",
   wa:    "WA\n#bloombyday #algae #freediving #spearfishing #westernaustralia #ningaloo #oceandata #divewa\n\nBloombyday.com",
 };
 
