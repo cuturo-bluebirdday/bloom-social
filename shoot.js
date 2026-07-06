@@ -1,3 +1,7 @@
+// shoot.js — v2.0 (2026-07-06) — daily map screenshots for Instagram.
+// v2: CLEAN_CSS rebuilt against bloom-index v4.24 selectors. Keeps ONLY the
+// BLOOM wordmark (logo + LIVE tag). Hides: subtitle, search bar, summary
+// pills, socials row, scale bar, IN TIME circle, all leaflet chrome.
 const { chromium } = require("playwright");
 const fs = require("fs");
 
@@ -11,20 +15,32 @@ const SHOTS = [
   { name: "wa",    url: "https://bloombyday.com/?lat=-27.7143&lon=114.2706&zoom=6" },
 ];
 
-// hide all UI chrome — just the clean map
+// hide ALL UI chrome except the BLOOM wordmark — just logo + clean map
 const CLEAN_CSS = `
+  /* legacy hides (pre-v4) */
   .beta-bar, #betabar        { display:none !important; }
   #stamp, .stamp             { display:none !important; }
   .leaflet-popup-pane        { display:none !important; }
   .leaflet-marker-pane       { display:none !important; }
   .leaflet-control-container { display:none !important; }
   .ctlstack                  { display:none !important; }
+
+  /* v4.2x additions */
+  .topbar .sub               { display:none !important; }  /* subtitle + version line */
+  .searchbar                 { display:none !important; }  /* search input (v4.23) */
+  #summary, .summary         { display:none !important; }  /* BLOOMING/BUILDING/CLEAR pills */
+  .socials                   { display:none !important; }  /* IG/FB/YT icon row */
+  #scalebar                  { display:none !important; }  /* dynamic km scale bar */
+  a[href="time.html"]        { display:none !important; }  /* IN TIME circle (inline-styled <a>, no id) */
+
+  /* belt-and-braces: any pin/ruler artifacts */
+  .leaflet-shadow-pane       { display:none !important; }
 `;
 
 (async () => {
   if (!fs.existsSync(OUT)) fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch();
-  // phone logical viewport (390x550) @ 2.77x ≈ 1080x1350 — matches iPhone 12 Pro framing
+  // phone logical viewport (390x488) @ 2.77x ≈ 1080x1350 — matches iPhone 12 Pro framing
   const page = await browser.newPage({
     viewport: { width: 390, height: 488 },
     deviceScaleFactor: 2.77
