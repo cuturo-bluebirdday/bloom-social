@@ -1,4 +1,9 @@
-// post_instagram.js — v2.0 (2026-07-06) — publish the 3 daily screenshots to Instagram.
+// post_instagram.js — v2.3 (2026-07-06) — publish the 3 daily screenshots to Instagram.
+// v2.0 hardening: preflight token/account/quota checks, image URL reachability,
+//      container status polling, post-publish verification, honest exit codes.
+// v2.1: eutrophication caption note added.
+// v2.2: eutrophication note + #eutrophication removed (overclaim — signal ≠ cause).
+// v2.3: weekly trend line injected from worker /trend (this-week vs last-week mean).
 // v2 changes: preflight token/account/quota checks, image URL reachability check,
 // container status polling (replaces blind 6s sleep), post-publish verification,
 // loud per-step logging, hard exit 1 if fewer than all shots publish.
@@ -18,12 +23,54 @@ const BRANCH     = process.env.GITHUB_REF_NAME || "main";
 const DATE       = new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Brisbane" });
 const GRAPH      = "https://graph.facebook.com/v21.0";
 
-// captions — edit freely. \n = line break.
-const CAPTIONS = {
-  seqld: "South East Queensland\nEutrophication — when nutrients from land reach the sea and feed algae.\n#bloombyday #algae #eutrophication #freediving #spearfishing #goldcoast #sunshinecoast #moretonbay #oceandata\n\nBloombyday.com",
-  nsw:   "NSW\nEutrophication — when nutrients from land reach the sea and feed algae.\n#bloombyday #algae #eutrophication #freediving #spearfishing #sydney #nsw #oceandata #divensw\n\nBloombyday.com",
-  wa:    "WA\n#bloombyday #algae #freediving #spearfishing #westernaustralia #ningaloo #oceandata #divewa\n\nBloombyday.com",
+// region metadata — captions are built dynamically (label + optional trend line + tags).
+const REGIONS = {
+  seqld: { label: "South East Queensland", tags: "#bloombyday #algae #freediving #spearfishing #goldcoast #sunshinecoast #moretonbay #oceandata" },
+  nsw:   { label: "NSW",                   tags: "#bloombyday #algae #freediving #spearfishing #sydney #nsw #oceandata #divensw" },
+  wa:    { label: "WA",                    tags: "#bloombyday #algae #freediving #spearfishing #westernaustralia #ningaloo #oceandata #divewa" },
 };
+
+const TREND_URL = "https://bloom-data.cuturo.workers.dev/trend";
+
+// Pull the rolling per-region series and turn each region's week-over-week change
+// into ONE honest line. Descriptive only — it's the satellite chlorophyll signal,
+// not a claim about cause. Compares this-week mean vs last-week mean (cloud-robust).
+async function loadTrends() {
+  const out = {};
+  try {
+    const r = await fetch(TREND_URL);
+    if (!r.ok) { console.log(`trend: /trend returned ${r.status} — no trend lines this post`); return out; }
+    const j = await r.json();
+    const series = (j.series || []).slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+    for (const region of Object.keys(REGIONS)) out[region] = trendLineFor(series, region);
+    console.log("trend: lines →", out);
+  } catch (e) {
+    console.log(`trend: load failed (${e.message}) — no trend lines this post`);
+  }
+  return out;
+}
+
+function trendLineFor(series, region) {
+  const vals = series.map((r) => r[region]).filter((v) => typeof v === "number");
+  if (vals.length < 11) return null;                 // need ~1.5+ weeks before we say anything
+  const thisWeek = vals.slice(-7);
+  const lastWeek = vals.slice(-14, -7);
+  if (thisWeek.length < 4 || lastWeek.length < 4) return null;
+  const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+  const tw = mean(thisWeek), lw = mean(lastWeek);
+  if (lw <= 0) return null;
+  const pct = Math.round(((tw - lw) / lw) * 100);
+  if (Math.abs(pct) < 5) return "Algae signal holding steady vs last week";
+  return `Algae signal ${pct > 0 ? "↑" : "↓"} ${Math.abs(pct)}% vs last week`;
+}
+
+function buildCaption(region, trendLine) {
+  const m = REGIONS[region];
+  const parts = [m.label];
+  if (trendLine) parts.push(trendLine);
+  parts.push(m.tags);
+  return parts.join("\n") + "\n\nBloombyday.com";
+}
 
 if (!IG_USER_ID || !TOKEN) { console.error("FATAL: Missing IG_USER_ID or IG_ACCESS_TOKEN secret"); process.exit(1); }
 
@@ -100,6 +147,8 @@ async function waitForContainer(id, maxSeconds = 90) {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
   console.log(`manifest: ${manifest.shots.length} shots for ${manifest.date}`);
 
+  const trends = await loadTrends();
+
   const published = [];
   for (const shot of manifest.shots) {
     const imageUrl = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/social/${shot.file}`;
@@ -108,9 +157,10 @@ async function waitForContainer(id, maxSeconds = 90) {
       await checkImage(imageUrl);
 
       // 1) create media container
+      const caption = buildCaption(shot.name, trends[shot.name]);
       const c = await igPost(`${IG_USER_ID}/media`, {
         image_url: imageUrl,
-        caption: CAPTIONS[shot.name] || "bloombyday.com",
+        caption,
       });
       console.log(`container created: ${c.id}`);
 
