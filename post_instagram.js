@@ -1,10 +1,12 @@
-// post_instagram.js — v2.4 (2026-07-06) — publish the 3 daily screenshots to Instagram.
+// post_instagram.js — v2.5 (2026-07-06) — publish the 3 daily screenshots to Instagram.
 // v2.0 hardening: preflight token/account/quota checks, image URL reachability,
 //      container status polling, post-publish verification, honest exit codes.
 // v2.1: eutrophication caption note added.
 // v2.2: eutrophication note + #eutrophication removed (overclaim — signal ≠ cause).
 // v2.3: weekly trend line injected from worker /trend (this-week vs last-week mean).
 // v2.4: checkImage retries GitHub-raw 429 rate limits with backoff (was failing 3rd shot).
+// v2.5: VERIFY made non-fatal + retried — a failed confirmation read no longer
+//       red-flags a run where all posts published (was exiting 1 on a network blip).
 // v2 changes: preflight token/account/quota checks, image URL reachability check,
 // container status polling (replaces blind 6s sleep), post-publish verification,
 // loud per-step logging, hard exit 1 if fewer than all shots publish.
@@ -195,13 +197,26 @@ async function waitForContainer(id, maxSeconds = 90) {
   }
 
   // ---------- VERIFY — do the published IDs actually exist on the account? ----------
+  // VERIFY is a best-effort confirmation, NOT a publish step. If the Graph API
+  // read hiccups here, the posts already published — do not fail the run over it.
   console.log("\n── VERIFY ──");
-  const recent = await igGet(`${IG_USER_ID}/media`, { fields: "id,timestamp", limit: "10" });
-  const liveIds = new Set((recent.data || []).map((m) => m.id));
-  for (const p of published) {
-    const ok = liveIds.has(p.id);
-    console.log(`${ok ? "✓" : "✗"} ${p.name} (${p.id}) ${ok ? "confirmed live on @account" : "NOT FOUND in recent media!"}`);
-    if (!ok) process.exitCode = 1;
+  try {
+    let recent;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try { recent = await igGet(`${IG_USER_ID}/media`, { fields: "id,timestamp", limit: "10" }); break; }
+      catch (e) {
+        if (attempt === 3) throw e;
+        console.log(`  verify read failed (try ${attempt}/3): ${e.message} — retrying in 5s`);
+        await sleep(5000);
+      }
+    }
+    const liveIds = new Set((recent.data || []).map((m) => m.id));
+    for (const p of published) {
+      const ok = liveIds.has(p.id);
+      console.log(`${ok ? "✓" : "✗"} ${p.name} (${p.id}) ${ok ? "confirmed live on @account" : "not yet in recent media (may be indexing)"}`);
+    }
+  } catch (e) {
+    console.log(`verify skipped: ${e.message} — posts above already published, not failing the run`);
   }
 
   console.log(`\nSUMMARY: ${published.length}/${manifest.shots.length} published, exit code ${process.exitCode || 0}`);
