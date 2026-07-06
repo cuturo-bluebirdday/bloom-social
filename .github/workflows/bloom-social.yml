@@ -1,12 +1,25 @@
 name: Bloom Social (daily Instagram)
 
-# Runs daily at 6pm Brisbane. Screenshots the 3 map regions, commits them
+# v2.0 (2026-07-06)
+# Runs daily ~6pm Brisbane. Screenshots the 3 map regions, commits them
 # (so they get public raw URLs), then posts them to Instagram.
+#
+# v2 changes:
+# - cron moved OFF the :00 minute (GitHub drops/delays on-the-hour jobs;
+#   :00 is the most congested slot). 07:47 UTC = 5:47pm Brisbane; GitHub's
+#   own lag typically lands the run right around 6pm.
+# - prints the trigger event at the top of every run, so the log itself
+#   tells you whether cron or a human started it.
+# - concurrency guard so a late cron + manual run can't overlap.
 
 on:
   workflow_dispatch:        # lets you run it manually to test
   schedule:
-    - cron: '0 8 * * *'     # 08:00 UTC = 18:00 (6pm) Brisbane (AEST, no DST)
+    - cron: '47 7 * * *'    # 07:47 UTC = 17:47 Brisbane (AEST, no DST)
+
+concurrency:
+  group: bloom-social
+  cancel-in-progress: false
 
 jobs:
   post:
@@ -14,6 +27,13 @@ jobs:
     permissions:
       contents: write        # needed to commit the screenshots back
     steps:
+      - name: Show trigger
+        run: |
+          echo "Triggered by: ${{ github.event_name }}"
+          echo "Branch/ref:  ${{ github.ref_name }}"
+          echo "UTC now:     $(date -u)"
+          echo "Brisbane:    $(TZ=Australia/Brisbane date)"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -35,6 +55,7 @@ jobs:
           git config user.email "bot@bloombyday.com"
           git add social/
           git commit -m "social: $(TZ=Australia/Brisbane date +%F)" || echo "nothing to commit"
+          git pull --rebase origin ${{ github.ref_name }} || true
           git push
 
       - name: Post to Instagram
