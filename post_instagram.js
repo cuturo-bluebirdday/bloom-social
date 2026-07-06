@@ -1,9 +1,10 @@
-// post_instagram.js — v2.3 (2026-07-06) — publish the 3 daily screenshots to Instagram.
+// post_instagram.js — v2.4 (2026-07-06) — publish the 3 daily screenshots to Instagram.
 // v2.0 hardening: preflight token/account/quota checks, image URL reachability,
 //      container status polling, post-publish verification, honest exit codes.
 // v2.1: eutrophication caption note added.
 // v2.2: eutrophication note + #eutrophication removed (overclaim — signal ≠ cause).
 // v2.3: weekly trend line injected from worker /trend (this-week vs last-week mean).
+// v2.4: checkImage retries GitHub-raw 429 rate limits with backoff (was failing 3rd shot).
 // v2 changes: preflight token/account/quota checks, image URL reachability check,
 // container status polling (replaces blind 6s sleep), post-publish verification,
 // loud per-step logging, hard exit 1 if fewer than all shots publish.
@@ -118,12 +119,27 @@ async function preflight() {
 
 // ---------- image URL must be publicly reachable ----------
 async function checkImage(url) {
-  const r = await fetch(url, { method: "GET" });
-  const type = r.headers.get("content-type") || "";
-  const len = r.headers.get("content-length") || "?";
-  console.log(`image check: ${r.status} ${type} ${len} bytes — ${url}`);
-  if (r.status !== 200) throw new Error(`image URL returned ${r.status} — not committed/pushed, wrong path, or repo not public`);
-  if (!type.startsWith("image/")) throw new Error(`image URL content-type is "${type}", expected image/*`);
+  // raw.githubusercontent.com rate-limits rapid fetches (429). Retry a few
+  // times with backoff before giving up — the file is there, GitHub is just busy.
+  const MAX = 4;
+  for (let attempt = 1; attempt <= MAX; attempt++) {
+    const r = await fetch(url, { method: "GET" });
+    const type = r.headers.get("content-type") || "";
+    const len = r.headers.get("content-length") || "?";
+    console.log(`image check (try ${attempt}/${MAX}): ${r.status} ${type} ${len} bytes — ${url}`);
+    if (r.status === 200) {
+      if (!type.startsWith("image/")) throw new Error(`image URL content-type is "${type}", expected image/*`);
+      return;
+    }
+    if (r.status === 429 && attempt < MAX) {
+      const wait = 5000 * attempt;   // 5s, 10s, 15s
+      console.log(`  429 rate-limited by GitHub raw — waiting ${wait / 1000}s then retrying`);
+      await sleep(wait);
+      continue;
+    }
+    if (r.status === 429) throw new Error(`image URL still 429 after ${MAX} tries — GitHub raw rate limit; rerun in a minute`);
+    throw new Error(`image URL returned ${r.status} — check the file is committed, path is correct, and repo is public`);
+  }
 }
 
 // ---------- poll container until IG has ingested the image ----------
