@@ -1,4 +1,6 @@
-// shoot.js — v2.0 (2026-07-06) — daily map screenshots for Instagram.
+// shoot.js — v2.1 (2026-07-07) — daily map screenshots for Instagram.
+// v2.1: SEQLD reframed (zoom 8, -27.3559,153.4227) — tighter on Moreton/Brisbane/
+//       Gold Coast, less unnecessary NSW. Framed via iPhone 12 Pro DevTools view.
 // v2: CLEAN_CSS rebuilt against bloom-index v4.24 selectors. Keeps ONLY the
 // BLOOM wordmark (logo + LIVE tag). Hides: subtitle, search bar, summary
 // pills, socials row, scale bar, IN TIME circle, all leaflet chrome.
@@ -10,7 +12,7 @@ const OUT = "social";
 
 // coords calibrated on iPhone 12 Pro emulation (390px) — phone framing
 const SHOTS = [
-  { name: "seqld", url: "https://bloombyday.com/?lat=-28.4071&lon=153.4007&zoom=7" },
+  { name: "seqld", url: "https://bloombyday.com/?lat=-27.3559&lon=153.4227&zoom=8" },
   { name: "nsw",   url: "https://bloombyday.com/?lat=-34.3525&lon=151.3179&zoom=7" },
   { name: "wa",    url: "https://bloombyday.com/?lat=-27.7143&lon=114.2706&zoom=6" },
 ];
