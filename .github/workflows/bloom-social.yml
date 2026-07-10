@@ -1,17 +1,21 @@
 name: Bloom Social (daily Instagram)
-# v2.1 (2026-07-07)
+# v2.2 (2026-07-08)
 # Runs daily ~6pm Brisbane. Screenshots 3 map regions, commits them for public
 # raw URLs, then posts to Instagram. HARDENED so a git push conflict (another
 # cron committing at the same time) can NEVER block the Instagram post.
 #
+# v2.2: removed own schedule (was double-posting with ig-trigger). ig-trigger
+#       in bloom-watch is now the single daily source.
 # v2.1 changes:
 # - Commit/push step is now continue-on-error + every git cmd non-fatal, so a
 #   repo race can't fail the job before the IG post runs. (Suspected cause of
 #   scheduled runs not posting: commit/push died, killing the job pre-post.)
 on:
-  workflow_dispatch:        # manual test
-  schedule:
-    - cron: '47 7 * * *'    # 07:47 UTC = 17:47 Brisbane (AEST, no DST)
+  workflow_dispatch:        # fired by ig-trigger (bloom-watch) + manual runs
+  # NOTE: bloom-social's OWN schedule was REMOVED in v2.2 — it was double-posting
+  # (its 5:47pm cron + the ig-trigger's 6pm poke = 2 posts). The IG Trigger in
+  # bloom-watch is now the SINGLE source of the daily post (rides the proven
+  # bloom-watch scheduler). Do NOT re-add a schedule here or it'll double-post again.
 concurrency:
   group: bloom-social
   cancel-in-progress: false
