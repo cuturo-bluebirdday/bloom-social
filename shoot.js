@@ -1,5 +1,5 @@
-// shoot.js — v2.1 (2026-07-07) — daily map screenshots for Instagram.
-// v2.1: SEQLD reframed (zoom 8, -27.3559,153.4227) — tighter on Moreton/Brisbane/
+// shoot.js — v2.2 (2026-07-08) — daily map screenshots for Instagram.
+// v2.2: posts now self-explain — keep tagline + BLOOMING/BUILDING/CLEAR legend.
 //       Gold Coast, less unnecessary NSW. Framed via iPhone 12 Pro DevTools view.
 // v2: CLEAN_CSS rebuilt against bloom-index v4.24 selectors. Keeps ONLY the
 // BLOOM wordmark (logo + LIVE tag). Hides: subtitle, search bar, summary
@@ -17,7 +17,10 @@ const SHOTS = [
   { name: "wa",    url: "https://bloombyday.com/?lat=-27.7143&lon=114.2706&zoom=6" },
 ];
 
-// hide ALL UI chrome except the BLOOM wordmark — just logo + clean map
+// v2.2: posts must SELF-EXPLAIN to first-time IG viewers. KEEP the logo, the
+// "live algae bloom detection · daily satellite" subtitle (tagline), AND the
+// BLOOMING/BUILDING/CLEAR legend pills. Hide only the genuine clutter (search,
+// controls, socials, scale, version). A newcomer now sees what the map IS.
 const CLEAN_CSS = `
   /* legacy hides (pre-v4) */
   .beta-bar, #betabar        { display:none !important; }
@@ -27,16 +30,23 @@ const CLEAN_CSS = `
   .leaflet-control-container { display:none !important; }
   .ctlstack                  { display:none !important; }
 
-  /* v4.2x additions */
-  .topbar .sub               { display:none !important; }  /* subtitle + version line */
-  .searchbar                 { display:none !important; }  /* search input (v4.23) */
-  #summary, .summary         { display:none !important; }  /* BLOOMING/BUILDING/CLEAR pills */
+  /* KEEP (do NOT hide) so posts explain themselves:
+     - .topbar .sub  → the "live algae bloom detection · daily satellite" tagline
+     - #summary/.summary → the BLOOMING / BUILDING / CLEAR legend pills          */
+
+  /* hide only the true clutter */
+  .searchbar                 { display:none !important; }  /* search input */
   .socials                   { display:none !important; }  /* IG/FB/YT icon row */
   #scalebar                  { display:none !important; }  /* dynamic km scale bar */
-  a[href="time.html"]        { display:none !important; }  /* IN TIME circle (inline-styled <a>, no id) */
-
-  /* belt-and-braces: any pin/ruler artifacts */
+  a[href="time.html"]        { display:none !important; }  /* IN TIME circle */
   .leaflet-shadow-pane       { display:none !important; }
+
+  /* hide just the version tag inside the subtitle, keep the tagline text.
+     (the version is a trailing <span> in .sub; dim it out of the shot)         */
+  .topbar .sub span[style*="mono"] { display:none !important; }
+
+  /* make the legend pills read clearly in the shot */
+  #summary, .summary { opacity:1 !important; }
 `;
 
 (async () => {
