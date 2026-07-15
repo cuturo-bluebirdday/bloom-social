@@ -1,64 +1,102 @@
-name: Bloom Social (daily Instagram)
-# v2.2 (2026-07-08)
-# Runs daily ~6pm Brisbane. Screenshots 3 map regions, commits them for public
-# raw URLs, then posts to Instagram. HARDENED so a git push conflict (another
-# cron committing at the same time) can NEVER block the Instagram post.
-#
-# v2.2: removed own schedule (was double-posting with ig-trigger). ig-trigger
-#       in bloom-watch is now the single daily source.
-# v2.1 changes:
-# - Commit/push step is now continue-on-error + every git cmd non-fatal, so a
-#   repo race can't fail the job before the IG post runs. (Suspected cause of
-#   scheduled runs not posting: commit/push died, killing the job pre-post.)
+name: Bloom Watch (daily)
+
+# The alarm clock. Every morning this runs the satellite bloom pull and publishes
+# the flags to Cloudflare KV, where the Bluebird worker reads them. No PC needed.
+
 on:
-  workflow_dispatch:        # fired by ig-trigger (bloom-watch) + manual runs
-  # NOTE: bloom-social's OWN schedule was REMOVED in v2.2 — it was double-posting
-  # (its 5:47pm cron + the ig-trigger's 6pm poke = 2 posts). The IG Trigger in
-  # bloom-watch is now the SINGLE source of the daily post (rides the proven
-  # bloom-watch scheduler). Do NOT re-add a schedule here or it'll double-post again.
-concurrency:
-  group: bloom-social
-  cancel-in-progress: false
+  schedule:
+    - cron: '0 18 * * *'        # 18:00 UTC daily  ≈  04:00 Brisbane (AEST, UTC+10)
+  workflow_dispatch: {}          # also lets you run it by hand from the Actions tab
+
 jobs:
-  post:
+  pull-and-publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Show trigger
-        run: |
-          echo "Triggered by: ${{ github.event_name }}"
-          echo "Branch/ref:  ${{ github.ref_name }}"
-          echo "UTC now:     $(date -u)"
-          echo "Brisbane:    $(TZ=Australia/Brisbane date)"
+      - name: Get the code
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '20'
+          python-version: '3.12'
 
-      - name: Install Playwright + Chromium
-        run: |
-          npm init -y >/dev/null 2>&1 || true
-          npm install playwright
-          npx playwright install --with-deps chromium
+      - name: Install dependencies
+        run: pip install copernicusmarine xarray netcdf4 matplotlib pillow numpy global-land-mask scipy && python -c "from global_land_mask import globe; print('land mask OK')"
 
-      - name: Screenshot the maps
-        run: node shoot.js
-
-      - name: Commit screenshots (non-fatal)
-        continue-on-error: true
-        run: |
-          git config user.name  "bloom-bot"
-          git config user.email "bot@bloombyday.com"
-          git add social/ || true
-          git commit -m "social: $(TZ=Australia/Brisbane date +%F)" || echo "nothing to commit"
-          git pull --rebase origin ${{ github.ref_name }} || echo "rebase skipped"
-          git push || echo "push failed (non-fatal) — images still available from prior commit"
-
-      - name: Post to Instagram
+      - name: Pull satellite + score spots
         env:
-          IG_USER_ID:      ${{ secrets.IG_USER_ID }}
-          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
-        run: node post_instagram.js
+          COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUS_USERNAME }}
+          COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUS_PASSWORD }}
+        run: python bloom_watch_au.py
+
+      - name: Render the bloom cloud
+        env:
+          COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUS_USERNAME }}
+          COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUS_PASSWORD }}
+          # v1.3: creds so bloom_field.py can read the trend series straight from KV
+          # (authoritative) instead of the flaky worker endpoint that froze the trend.
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_KV_NAMESPACE_ID: ${{ secrets.CF_KV_NAMESPACE_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: python bloom_field.py
+
+      - name: Render the surface currents
+        env:
+          COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUS_USERNAME }}
+          COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUS_PASSWORD }}
+        run: python bloom_currents.py
+
+
+      - name: Render water clarity
+        env:
+          COPERNICUSMARINE_SERVICE_USERNAME: ${{ secrets.COPERNICUS_USERNAME }}
+          COPERNICUSMARINE_SERVICE_PASSWORD: ${{ secrets.COPERNICUS_PASSWORD }}
+        run: python bloom_clarity.py
+
+      - name: Publish flags to Cloudflare KV
+        run: |
+          curl -sf -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CF_ACCOUNT_ID }}/storage/kv/namespaces/${{ secrets.CF_KV_NAMESPACE_ID }}/values/flags" \
+            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            --data-binary @bloom_flags.json
+          python -c "import json;d=json.load(open('bloom_flags.json'));print('Published',len(d['spots']),'spots, generated',d['generated'])"
+
+      - name: Publish bloom cloud image to Cloudflare KV
+        run: |
+          curl -sf -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CF_ACCOUNT_ID }}/storage/kv/namespaces/${{ secrets.CF_KV_NAMESPACE_ID }}/values/field-png" \
+            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @field.png
+          echo "Published field.png ($(wc -c < field.png) bytes)"
+
+      - name: Publish weekly trend to Cloudflare KV
+        run: |
+          if [ -f trend.json ]; then
+            curl -sf -X PUT \
+              "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CF_ACCOUNT_ID }}/storage/kv/namespaces/${{ secrets.CF_KV_NAMESPACE_ID }}/values/trend" \
+              -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              --data-binary @trend.json
+            echo "Published trend.json ($(wc -c < trend.json) bytes)"
+          else
+            echo "no trend.json this run — skipping"
+          fi
+
+
+      - name: Publish water clarity to Cloudflare KV
+        run: |
+          curl -sf -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CF_ACCOUNT_ID }}/storage/kv/namespaces/${{ secrets.CF_KV_NAMESPACE_ID }}/values/clarity-png" \
+            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @clarity.png
+          echo "Published clarity.png ($(wc -c < clarity.png) bytes)"
+
+      - name: Publish surface currents to Cloudflare KV
+        run: |
+          curl -sf -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CF_ACCOUNT_ID }}/storage/kv/namespaces/${{ secrets.CF_KV_NAMESPACE_ID }}/values/currents" \
+            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            --data-binary @currents.json
+          echo "Published currents.json ($(wc -c < currents.json) bytes)"
