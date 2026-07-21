@@ -1,0 +1,45 @@
+name: Bluebird Social (daily Instagram)
+# Mirrors Bloom's pipeline. Screenshots the 3 regional dive-report cards
+# (QLD, NSW, WA), commits them for public raw URLs, then posts an IG carousel.
+# Reuses the SAME post_instagram.js you use for Bloom — just point it at the
+# social/bluebird-*.png files and give it the Bluebird caption below.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *'        # 08:00 UTC = 6pm Brisbane (AEST, no DST)
+concurrency:
+  group: bluebird-social
+  cancel-in-progress: false
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright + Chromium
+        run: |
+          npm init -y >/dev/null 2>&1 || true
+          npm install playwright
+          npx playwright install --with-deps chromium
+      - name: Screenshot the 3 report cards
+        run: node shoot-bluebird.js
+      - name: Commit screenshots (non-fatal)
+        continue-on-error: true
+        run: |
+          git config user.name  "bluebird-bot"
+          git config user.email "bot@bluebirdday.app"
+          git add social/ || true
+          git commit -m "social: $(TZ=Australia/Brisbane date +%F)" || echo "nothing to commit"
+          git pull --rebase origin ${{ github.ref_name }} || echo "rebase skipped"
+          git push || echo "push failed (non-fatal)"
+      - name: Post to Instagram (carousel)
+        env:
+          IG_USER_ID:      ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_IMAGES:  "social/bluebird-qld.png,social/bluebird-nsw.png,social/bluebird-wa.png"
+          IG_CAPTION: "Today's best dive spots — QLD, NSW & WA 🤿  One honest score, 1–7: swell, wind, clarity, tide & moon. Free at bluebirdday.app  #freediving #spearfishing #scuba #australia #diving"
+        run: node post_instagram.js
