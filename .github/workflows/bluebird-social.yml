@@ -1,8 +1,7 @@
 name: Bluebird Social (daily Instagram)
 # Mirrors Bloom's pipeline. Screenshots the 3 regional dive-report cards
 # (QLD, NSW, WA), commits them for public raw URLs, then posts an IG carousel.
-# Reuses the SAME post_instagram.js you use for Bloom — just point it at the
-# social/bluebird-*.png files and give it the Bluebird caption below.
+# Uses its OWN post_instagram_bluebird.js (Bluebird caption). Bloom untouched.
 on:
   workflow_dispatch:
   schedule:
@@ -38,8 +37,6 @@ jobs:
           git push || echo "push failed (non-fatal)"
       - name: Post to Instagram (carousel)
         env:
-          IG_USER_ID:      ${{ secrets.IG_USER_ID }}
-          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
-          IG_IMAGES:  "social/bluebird-qld.png,social/bluebird-nsw.png,social/bluebird-wa.png"
-          IG_CAPTION: "Today's best dive spots — QLD, NSW & WA 🤿  One honest score, 1–7: swell, wind, clarity, tide & moon. Free at bluebirdday.app  #freediving #spearfishing #scuba #australia #diving"
-        run: node post_instagram.js
+          IG_USER_ID:      ${{ secrets.BLUEBIRD_IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.BLUEBIRD_IG_ACCESS_TOKEN }}
+        run: node post_instagram_bluebird.js
