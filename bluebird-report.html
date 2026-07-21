@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=1080, initial-scale=1"><title>Bluebird — Top 10 Dive Spots Today</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;600;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1350px;overflow:hidden}
+body{font-family:'Inter',system-ui,sans-serif;color:#fff;
+ background:
+  radial-gradient(135% 90% at 50% -18%,rgba(120,215,255,0.22),rgba(120,215,255,0) 55%),
+  radial-gradient(90% 60% at 82% 10%,rgba(70,165,235,0.14),transparent 62%),
+  radial-gradient(75% 55% at 10% 95%,rgba(15,65,115,0.34),transparent 60%),
+  linear-gradient(180deg,#0b3157 0%,#0a2645 40%,#061a33 72%,#04101f 100%);}
+.wrap{padding:52px 54px 42px;height:100%;display:flex;flex-direction:column}
+.mono{font-family:'Space Mono',monospace}
+.head{display:flex;align-items:center;gap:14px}
+.sun{width:46px;height:46px;flex:none}
+.brand{font-family:'Space Mono',monospace;font-size:20px;letter-spacing:5px;color:#67eeff;font-weight:700}
+.title{font-size:50px;font-weight:800;line-height:1.02;margin-top:18px;letter-spacing:-1px}
+.title span{color:#67eeff}
+.sub{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;margin-bottom:20px}
+.region{font-family:'Space Mono',monospace;font-size:24px;letter-spacing:3px;color:#8fd0ec}
+.date{font-family:'Space Mono',monospace;font-size:22px;letter-spacing:2px;color:#8fd0ec}
+.list{flex:1;display:flex;flex-direction:column;gap:8px}
+.row{display:flex;align-items:center;gap:18px;padding:13px 22px;border-radius:16px;
+ background:rgba(18,60,102,0.34);border:1px solid rgba(160,225,255,0.10)}
+.row.top{background:linear-gradient(158deg,rgba(56,110,165,0.42),rgba(20,52,92,0.26));border:1px solid rgba(103,238,255,0.5);box-shadow:0 6px 22px rgba(0,12,34,0.45)}
+.rk{font-family:'Space Mono',monospace;font-size:24px;color:#8fd0ec;width:30px;text-align:center;flex:none}
+.badge{flex:none;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.badge .num{font-family:'Space Mono',monospace;font-weight:700;line-height:1}
+.badge .of{font-family:'Space Mono',monospace;opacity:.6}
+.rname{font-size:29px;font-weight:700;line-height:1.08}
+.row.top .rname{font-size:33px}
+.rcond{font-size:19px;color:#a9d8f0;margin-top:4px;letter-spacing:.2px}
+.rscore{margin-left:auto;font-family:'Space Mono',monospace;font-size:19px;letter-spacing:2px;text-align:right;flex:none;padding-left:10px}
+.foot{margin-top:16px;display:flex;justify-content:space-between;align-items:center;padding-top:18px;border-top:1px solid rgba(160,225,255,0.14)}
+.foot .site{font-family:'Space Mono',monospace;font-size:26px;letter-spacing:2px;color:#67eeff;font-weight:700}
+.foot .tag{font-size:18px;color:#8fd0ec;text-align:right;line-height:1.4;max-width:520px}
+.err{padding:40px;font-size:28px;color:#ff9090}
+</style></head>
+<body><div class="wrap" id="wrap"><div class="err mono">Loading conditions…</div></div>
+<script>
+const SPOTS={"qld":[{"name":"Kirra Reef (Gold Coast)","lat":-28.1625,"lon":153.5309,"coastAngle":70,"depth":6,"riverInfluence":true},{"name":"The Spit (Gold Coast)","lat":-27.935005,"lon":153.433455,"coastAngle":80,"depth":8,"riverInfluence":true},{"name":"Seaway (Gold Coast)","lat":-27.93691,"lon":153.425613,"coastAngle":80,"depth":12,"riverInfluence":true},{"name":"Scottish Prince Wreck","lat":-27.961293,"lon":153.43469,"coastAngle":80,"depth":18,"riverInfluence":false},{"name":"Wonder Reef (Gold Coast)","lat":-27.9594,"lon":153.4503,"coastAngle":80,"depth":18,"riverInfluence":false},{"name":"Narrowneck Reef (Gold Coast)","lat":-27.985,"lon":153.44,"coastAngle":80,"depth":10,"riverInfluence":true},{"name":"Tangalooma Wrecks (Moreton Is.)","lat":-27.162612,"lon":153.368429,"coastAngle":90,"depth":8,"riverInfluence":false},{"name":"Cape Moreton (Moreton Is.)","lat":-27.026037,"lon":153.468523,"coastAngle":90,"depth":15,"riverInfluence":false},{"name":"Flinders Reef (Moreton Is.)","lat":-26.971379,"lon":153.485454,"coastAngle":90,"depth":12,"riverInfluence":false},{"name":"North Stradbroke Island","lat":-27.022348,"lon":153.454578,"coastAngle":90,"depth":12,"riverInfluence":false},{"name":"Wolf Rock (Rainbow Beach)","lat":-25.926141,"lon":153.191668,"coastAngle":90,"depth":20,"riverInfluence":false},{"name":"Point Lookout (N Stradbroke)","lat":-27.43093,"lon":153.5535,"coastAngle":90,"depth":10,"riverInfluence":false},{"name":"Point Arkwright (SC)","lat":-26.54632,"lon":153.10822,"coastAngle":90,"depth":8,"riverInfluence":true},{"name":"Mudjimba Island (SC)","lat":-26.614627,"lon":153.114423,"coastAngle":90,"depth":8,"riverInfluence":false},{"name":"Jew Shoal (SC)","lat":-26.361201,"lon":153.112809,"coastAngle":90,"depth":12,"riverInfluence":false},{"name":"Bray Rocks (SC)","lat":-26.797944,"lon":153.160187,"coastAngle":90,"depth":10,"riverInfluence":false},{"name":"Bokarina Beach Cove (SC)","lat":-26.74746,"lon":153.142354,"coastAngle":90,"depth":10,"riverInfluence":false},{"name":"SS Yongala Wreck","lat":-19.300829,"lon":147.623456,"coastAngle":90,"depth":28,"riverInfluence":false},{"name":"Lady Musgrave Island","lat":-23.895844,"lon":152.382413,"coastAngle":90,"depth":15,"riverInfluence":false}],"nsw":[{"name":"Kingscliff Reef (NSW)","lat":-28.25,"lon":153.585,"coastAngle":100,"depth":12,"riverInfluence":false},{"name":"Julian Rocks (Byron Bay)","lat":-28.6167,"lon":153.6333,"coastAngle":90,"depth":15,"riverInfluence":false},{"name":"Magic Point (Maroubra)","lat":-33.95841,"lon":151.27104,"coastAngle":90,"depth":18,"riverInfluence":false},{"name":"Seal Rocks (NSW)","lat":-32.462826,"lon":152.553484,"coastAngle":90,"depth":15,"riverInfluence":false},{"name":"Shelly Beach (Manly)","lat":-33.800427,"lon":151.297853,"coastAngle":90,"depth":10,"riverInfluence":false},{"name":"Stingray Rock (NSW)","lat":-30.881804,"lon":153.043461,"coastAngle":90,"depth":20,"riverInfluence":false},{"name":"Gordon's Bay (Sydney)","lat":-33.915542,"lon":151.263085,"coastAngle":90,"depth":12,"riverInfluence":false}],"wa":[{"name":"Ningaloo Reef (WA)","lat":-22.683599,"lon":113.677376,"coastAngle":270,"depth":15,"riverInfluence":false},{"name":"Rottnest Island (WA)","lat":-32.00132,"lon":115.48869,"coastAngle":270,"depth":12,"riverInfluence":false},{"name":"Busselton Underwater Observatory (WA)","lat":-33.625093,"lon":115.336668,"coastAngle":270,"depth":8,"riverInfluence":false},{"name":"Coral Bay (WA)","lat":-23.13839,"lon":113.75261,"coastAngle":270,"depth":10,"riverInfluence":false},{"name":"Rowley Shoals (WA)","lat":-17.330411,"lon":119.166981,"coastAngle":270,"depth":20,"riverInfluence":false},{"name":"Exmouth (Navy Pier WA)","lat":-21.815549,"lon":114.191778,"coastAngle":270,"depth":12,"riverInfluence":false},{"name":"Mettams Pool (Perth)","lat":-31.8676,"lon":115.74853,"coastAngle":270,"depth":4,"riverInfluence":false},{"name":"Woodman Point (Perth)","lat":-32.1083,"lon":115.75269,"coastAngle":270,"depth":6,"riverInfluence":false},{"name":"Woolies Point (Perth)","lat":-32.135263,"lon":115.735185,"coastAngle":270,"depth":6,"riverInfluence":false}]};
+const REGION_NAME={qld:"QUEENSLAND",nsw:"NEW SOUTH WALES",wa:"WESTERN AUSTRALIA"};
+const LABELS={7:"DIAMOND",6:"EMERALD",5:"EMERALD",4:"GOOD",3:"DECENT",2:"FAIR",1:"POOR"};
+const COLORS={7:"#9ff2ff",6:"#4ade80",5:"#4ade80",4:"#67eeff",3:"#fcd34d",2:"#f59e0b",1:"#ff6b6b"};
+const q=new URLSearchParams(location.search);
+const region=(q.get("region")||"qld").toLowerCase();
+const demo=q.get("demo")==="1";
+const KEY="2fea45d7330ea669e589b86407e1f298f82fc5e7d9c99df2c163b7d3bb727368";
+const BASE="https://bluebird-proxy.cuturo.workers.dev";
+function clarWord(l){return ({EXCELLENT:"glassy",GOOD:"clear",FAIR:"hazy",POOR:"murky"})[l]||(l||"").toLowerCase();}
+async function fetchSpot(s){
+  const p=`lat=${s.lat}&lon=${s.lon}&coastAngle=${s.coastAngle||90}&depth=${s.depth||0}&riverInfluence=${s.riverInfluence||false}&timezone=auto`;
+  const r=await fetch(`${BASE}/score?${p}`,{headers:{"X-API-Key":KEY}});
+  if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();return d.days||[];
+}
+function mockDays(s){const base=[3,4,4,5,5,6][Math.floor((Math.abs(s.lat*7+s.lon)*13)%6)];
+  const today=new Date().toLocaleDateString("en-CA");
+  return [{date:today,score:base,waveHeight:0.5+((Math.abs(s.depth*3)%9)/10),windSpeed:4+(Math.abs(s.depth*5)%14),clarity:{label:["GOOD","EXCELLENT","FAIR"][Math.abs(s.depth)%3]},sst:20+(Math.abs(s.lat)%2)}];}
+function condStr(d){return "🌊 "+(d.waveHeight!=null?d.waveHeight.toFixed(1):"–")+"m   💨 "+Math.round(d.windSpeed||0)+"km/h   💧 "+clarWord(d.clarity&&d.clarity.label)+(d.sst!=null?"   🌡️ "+Math.round(d.sst)+"°":"");}
+function badge(score,size){const c=COLORS[score]||"#67eeff";const num=Math.round(size*0.44),of=Math.round(size*0.16);
+  return `<div class="badge" style="width:${size}px;height:${size}px;border:${Math.max(3,size*0.07)}px solid ${c};box-shadow:0 0 ${size*0.3}px ${c}55">
+    <div class="num" style="font-size:${num}px;color:${c}">${score}</div><div class="of" style="font-size:${of}px;color:${c}">/7</div></div>`;}
+async function run(){
+  const spots=SPOTS[region]||SPOTS.qld;
+  const today=new Date().toLocaleDateString("en-CA");
+  const results=await Promise.all(spots.map(async s=>{try{
+    const days=demo?mockDays(s):await fetchSpot(s);
+    const d=days.find(x=>x.date===today)||days[0];
+    return d&&typeof d.score==="number"?{s,d}:null;}catch(e){return null;}}));
+  const ranked=results.filter(Boolean).sort((a,b)=>(b.d.score-a.d.score)||((a.d.waveHeight||9)-(b.d.waveHeight||9))||((a.d.windSpeed||99)-(b.d.windSpeed||99)));
+  const dstr=new Date().toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"}).toUpperCase();
+  const sun=`<svg class="sun" viewBox="0 0 100 100" fill="none" stroke="#ffe066" stroke-width="7" stroke-linecap="round"><circle cx="50" cy="50" r="20"/><g><line x1="50" y1="8" x2="50" y2="20"/><line x1="50" y1="80" x2="50" y2="92"/><line x1="8" y1="50" x2="20" y2="50"/><line x1="80" y1="50" x2="92" y2="50"/><line x1="21" y1="21" x2="29" y2="29"/><line x1="71" y1="71" x2="79" y2="79"/><line x1="79" y1="21" x2="71" y2="29"/><line x1="29" y1="71" x2="21" y2="79"/></g></svg>`;
+  let inner=`<div class="head">${sun}<div class="brand">BLUEBIRD DAY</div></div>
+    <div class="title">Top 10 <span>dive spots</span> today</div>
+    <div class="sub"><div class="region">📍 ${REGION_NAME[region]||region.toUpperCase()}</div><div class="date">${dstr}</div></div>`;
+  if(!ranked.length){ inner+=`<div class="err mono">No scores available right now.</div>`; }
+  else{
+    inner+=`<div class="list">`;
+    ranked.slice(0,10).forEach((r,i)=>{ const top=i===0;
+      inner+=`<div class="row${top?' top':''}"><div class="rk">${i+1}</div>${badge(r.d.score,top?60:52)}
+        <div style="min-width:0;flex:1"><div class="rname">${r.s.name}</div><div class="rcond">${condStr(r.d)}</div></div>
+        <div class="rscore" style="color:${COLORS[r.d.score]}">${LABELS[r.d.score]||""}</div></div>`; });
+    inner+=`</div>`;
+  }
+  inner+=`<div class="foot"><div class="site">bluebirdday.app</div>
+    <div class="tag">One honest dive score, 1–7 — swell, wind, clarity, tide &amp; moon. Free. #freediving #spearfishing #scuba</div></div>`;
+  document.getElementById("wrap").innerHTML=inner;
+  document.body.setAttribute("data-ready","1");
+}
+run();
+</script></body></html>
