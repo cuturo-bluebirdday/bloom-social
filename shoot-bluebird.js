@@ -36,9 +36,17 @@ const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full
 
     for(const r of REGIONS){
       try{
-        const cur=await p.$eval('select', s=>s.value).catch(()=>null);
-        if(cur!==r.label){
-          await p.selectOption('select', r.label);
+        // set the region with a native setter + change event (React-safe, no
+        // Playwright selectOption timeout). Returns true if it actually changed.
+        const changed=await p.evaluate((label)=>{
+          const sel=document.querySelector('select'); if(!sel) return false;
+          if(sel.value===label) return false;
+          const setter=Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype,'value').set;
+          setter.call(sel,label);
+          sel.dispatchEvent(new Event('change',{bubbles:true}));
+          return true;
+        }, r.label);
+        if(changed){
           // wait for the switch to kick in (old hero clears / progress shows)
           await p.waitForFunction(()=>{ const t=document.body.innerText; return /Scoring \d+ spots/.test(t) || !t.includes('View full forecast'); },{timeout:20000}).catch(()=>{});
         }
