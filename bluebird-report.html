@@ -51,8 +51,14 @@ const BASE="https://bluebird-proxy.cuturo.workers.dev";
 function clarWord(l){return ({EXCELLENT:"glassy",GOOD:"clear",FAIR:"hazy",POOR:"murky"})[l]||(l||"").toLowerCase();}
 async function fetchSpot(s){
   const p=`lat=${s.lat}&lon=${s.lon}&coastAngle=${s.coastAngle||90}&depth=${s.depth||0}&riverInfluence=${s.riverInfluence||false}&timezone=auto`;
-  const r=await fetch(`${BASE}/score?${p}`,{headers:{"X-API-Key":KEY}});
-  if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();return d.days||[];
+  let lastErr;
+  for(let attempt=0;attempt<3;attempt++){
+    try{
+      const r=await fetch(`${BASE}/score?${p}`,{headers:{"X-API-Key":KEY}});
+      if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();return d.days||[];
+    }catch(e){ lastErr=e; await new Promise(res=>setTimeout(res,600)); }
+  }
+  throw lastErr;
 }
 function mockDays(s){const base=[3,4,4,5,5,6][Math.floor((Math.abs(s.lat*7+s.lon)*13)%6)];
   const today=new Date().toLocaleDateString("en-CA");
@@ -63,16 +69,19 @@ function badge(score,size){const c=COLORS[score]||"#67eeff";const num=Math.round
     <div class="num" style="font-size:${num}px;color:${c}">${score}</div><div class="of" style="font-size:${of}px;color:${c}">/7</div></div>`;}
 async function run(){
   const spots=SPOTS[region]||SPOTS.qld;
-  const today=new Date().toLocaleDateString("en-CA");
+  const bne=new Date(new Date().toLocaleString("en-US",{timeZone:"Australia/Brisbane"}));
+  bne.setDate(bne.getDate()+1);
+  const pad=n=>String(n).padStart(2,"0");
+  const target=`${bne.getFullYear()}-${pad(bne.getMonth()+1)}-${pad(bne.getDate())}`;
   const results=await Promise.all(spots.map(async s=>{try{
     const days=demo?mockDays(s):await fetchSpot(s);
-    const d=days.find(x=>x.date===today)||days[0];
+    const d=days.find(x=>x.date===target)||days[1]||days[0];
     return d&&typeof d.score==="number"?{s,d}:null;}catch(e){return null;}}));
   const ranked=results.filter(Boolean).sort((a,b)=>(b.d.score-a.d.score)||((a.d.waveHeight||9)-(b.d.waveHeight||9))||((a.d.windSpeed||99)-(b.d.windSpeed||99)));
-  const dstr=new Date().toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"}).toUpperCase();
+  const dstr=bne.toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"}).toUpperCase();
   const sun=`<svg class="sun" viewBox="0 0 100 100" fill="none" stroke="#ffe066" stroke-width="7" stroke-linecap="round"><circle cx="50" cy="50" r="20"/><g><line x1="50" y1="8" x2="50" y2="20"/><line x1="50" y1="80" x2="50" y2="92"/><line x1="8" y1="50" x2="20" y2="50"/><line x1="80" y1="50" x2="92" y2="50"/><line x1="21" y1="21" x2="29" y2="29"/><line x1="71" y1="71" x2="79" y2="79"/><line x1="79" y1="21" x2="71" y2="29"/><line x1="29" y1="71" x2="21" y2="79"/></g></svg>`;
   let inner=`<div class="head">${sun}<div class="brand">BLUEBIRD DAY</div></div>
-    <div class="title">Top 10 <span>dive spots</span> today</div>
+    <div class="title">Top 10 <span>dive spots</span> tomorrow</div>
     <div class="sub"><div class="region">📍 ${REGION_NAME[region]||region.toUpperCase()}</div><div class="date">${dstr}</div></div>`;
   if(!ranked.length){ inner+=`<div class="err mono">No scores available right now.</div>`; }
   else{
@@ -86,6 +95,7 @@ async function run(){
   inner+=`<div class="foot"><div class="site">bluebirdday.app</div>
     <div class="tag">One honest dive score, 1–7 — swell, wind, clarity, tide &amp; moon. Free. #freediving #spearfishing #scuba</div></div>`;
   document.getElementById("wrap").innerHTML=inner;
+  document.body.setAttribute("data-hasscores", ranked.length?"1":"0");
   document.body.setAttribute("data-ready","1");
 }
 run();
