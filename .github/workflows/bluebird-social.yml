@@ -1,11 +1,12 @@
 name: Bluebird Social (daily Instagram)
 # Mirrors Bloom's pipeline. Screenshots the 3 regional dive-report cards
-# (QLD, NSW, WA), commits them for public raw URLs, then posts an IG carousel.
-# Uses its OWN post_instagram_bluebird.js (Bluebird caption). Bloom untouched.
+# (QLD, NSW, WA), commits them for public raw URLs, then posts ONE separate
+# single-image post per region (grid reads WA-NSW-QLD left->right).
+# Uses its OWN post_instagram_bluebird.js (Bluebird captions). Bloom untouched.
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 8 * * *'        # 08:00 UTC = 6pm Brisbane (AEST, no DST)
+    - cron: '0 17 * * *'       # 17:00 UTC = 3am Brisbane next day (AEST, no DST)
 concurrency:
   group: bluebird-social
   cancel-in-progress: false
@@ -35,8 +36,9 @@ jobs:
           git commit -m "social: $(TZ=Australia/Brisbane date +%F)" || echo "nothing to commit"
           git pull --rebase origin ${{ github.ref_name }} || echo "rebase skipped"
           git push || echo "push failed (non-fatal)"
-      - name: Post to Instagram (carousel)
+      - name: Post to Instagram (one post per region)
         env:
           IG_USER_ID:      ${{ secrets.BLUEBIRD_IG_USER_ID }}
           IG_ACCESS_TOKEN: ${{ secrets.BLUEBIRD_IG_ACCESS_TOKEN }}
+          GITHUB_RUN_ID:   ${{ github.run_id }}
         run: node post_instagram_bluebird.js
