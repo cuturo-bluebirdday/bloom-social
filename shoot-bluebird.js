@@ -21,7 +21,7 @@ const TARGET_DOM=String(bne.getDate());
   const b=await chromium.launch();
   const valid=[];
   for(const r of REGIONS){
-    const p=await b.newPage({viewport:{width:540,height:675},deviceScaleFactor:2});
+    const p=await b.newPage({viewport:{width:540,height:675},deviceScaleFactor:2,timezoneId:'Australia/Brisbane'});
     try{
       await p.goto(APP,{waitUntil:'domcontentloaded',timeout:60000});
       // wait for the React app to render its tabs
@@ -29,17 +29,25 @@ const TARGET_DOM=String(bne.getDate());
       // open BEST SPOT tab
       await p.evaluate(()=>{ const x=[...document.querySelectorAll('button')].find(b=>/BEST SPOT/.test(b.innerText)); x&&x.click(); });
       await p.waitForSelector('select',{timeout:15000});
-      // choose the region
+      // The app auto-loads its default region (Queensland) on mount. Wait for
+      // that to FULLY finish before switching, otherwise its in-flight fetch
+      // overwrites the region we switch to (or starves it). One region at a time.
+      const loaded=()=>{ const t=document.body.innerText; return t.includes('View full forecast') && !/Scoring \d+ spots/.test(t); };
+      await p.waitForFunction(loaded,{timeout:90000});
+      // switch to the target region (selecting the same value for QLD is a no-op)
       await p.selectOption('select', r.label);
-      await p.waitForTimeout(400);
-      // choose tomorrow's day chip (matched by day-of-month)
+      if(r.key!=='qld'){
+        // wait for the new region's load to kick in (old hero clears / progress shows)
+        await p.waitForFunction(()=>{ const t=document.body.innerText; return /Scoring \d+ spots/.test(t) || !t.includes('View full forecast'); },{timeout:20000}).catch(()=>{});
+      }
+      // wait for the TARGET region to finish loading (loaded AND dropdown shows it)
+      await p.waitForFunction((label)=>{ const t=document.body.innerText; const s=document.querySelector('select'); return t.includes('View full forecast') && !/Scoring \d+ spots/.test(t) && s && s.value===label; },{timeout:90000}, r.label);
+      // pick tomorrow's day chip (matched by day-of-month) and let it re-rank
       await p.evaluate((dom)=>{
         const btns=[...document.querySelectorAll('button')].filter(b=>/^(TODAY|MON|TUE|WED|THU|FRI|SAT|SUN)/.test(b.innerText.trim()));
         const t=btns.find(b=>b.innerText.trim().split('\n').pop()===dom);
         t&&t.click();
       }, TARGET_DOM);
-      // wait until the region finishes scoring (hero card renders)
-      await p.waitForFunction(()=>document.body.innerText.includes('View full forecast'),{timeout:75000});
       await p.waitForTimeout(1200);
       // hide the fixed "Beta" disclaimer bar / any high-z toast so it's not in the shot
       await p.evaluate(()=>{
