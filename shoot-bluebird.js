@@ -63,6 +63,7 @@ const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full
         // hide the fixed "Beta" disclaimer bar / any high-z toast
         await p.evaluate(()=>{
           [...document.querySelectorAll('body *')].forEach(el=>{
+            if(el.id==='bb-watermark') return; // never hide our own stamp
             const s=getComputedStyle(el);
             if(s.position==='fixed'){
               const t=el.innerText||'';
@@ -71,6 +72,18 @@ const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full
           });
         });
         await p.waitForTimeout(200);
+        // stamp the website on the image so it travels with any repost/screenshot
+        await p.evaluate(()=>{
+          let w=document.getElementById('bb-watermark');
+          if(!w){ w=document.createElement('div'); w.id='bb-watermark'; document.body.appendChild(w); }
+          w.textContent='bluebirdday.app';
+          Object.assign(w.style,{position:'fixed',left:'50%',bottom:'10px',transform:'translateX(-50%)',
+            zIndex:'2147483647',background:'rgba(11,22,40,0.72)',color:'#fff',
+            font:'600 13px -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif',letterSpacing:'0.3px',
+            padding:'5px 12px',borderRadius:'999px',pointerEvents:'none',display:'block',
+            boxShadow:'0 2px 8px rgba(0,0,0,0.35)'});
+        });
+        await p.waitForTimeout(120);
         await p.screenshot({path:`social/bluebird-${r.key}.png`, clip:{x:0,y:0,width:540,height:675}});
         valid.push(r.key);
         console.log('shot',r.key);
