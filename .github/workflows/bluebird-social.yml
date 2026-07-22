@@ -1,12 +1,14 @@
-name: Bluebird Social (daily Instagram)
-# Mirrors Bloom's pipeline. Screenshots the 3 regional dive-report cards
-# (QLD, NSW, WA), commits them for public raw URLs, then posts ONE separate
-# single-image post per region (grid reads WA-NSW-QLD left->right).
+name: Bluebird Social (weekly Instagram)
+# Mirrors Bloom's pipeline. Runs Wednesday 3am Brisbane and posts the COMING
+# SATURDAY's forecast so people have a few days to plan the weekend.
+# Screenshots the 3 regional BEST SPOT views (QLD, NSW, WA), commits them for
+# public raw URLs, then posts ONE separate single-image post per region
+# (grid reads WA-NSW-QLD left->right).
 # Uses its OWN post_instagram_bluebird.js (Bluebird captions). Bloom untouched.
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 17 * * *'       # 17:00 UTC = 3am Brisbane next day (AEST, no DST)
+    - cron: '0 17 * * 2'       # Tue 17:00 UTC = Wed 3am Brisbane (weekly, weekend preview)
 concurrency:
   group: bluebird-social
   cancel-in-progress: false
