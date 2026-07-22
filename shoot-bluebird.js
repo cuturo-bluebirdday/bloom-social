@@ -60,6 +60,9 @@ const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full
           t&&t.click();
         }, TARGET_DOM);
         await p.waitForTimeout(1200);
+        // Zoom out to ~50% so ~8 spots are visible instead of ~4
+        await p.evaluate(()=>{ document.documentElement.style.zoom='0.5'; });
+        await p.waitForTimeout(400);
         // hide the fixed "Beta" disclaimer bar / any high-z toast
         await p.evaluate(()=>{
           [...document.querySelectorAll('body *')].forEach(el=>{
@@ -77,11 +80,12 @@ const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full
           let w=document.getElementById('bb-watermark');
           if(!w){ w=document.createElement('div'); w.id='bb-watermark'; document.body.appendChild(w); }
           w.textContent='bluebirdday.app';
-          Object.assign(w.style,{position:'fixed',left:'50%',bottom:'10px',transform:'translateX(-50%)',
-            zIndex:'2147483647',background:'rgba(11,22,40,0.72)',color:'#fff',
-            font:'600 13px -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif',letterSpacing:'0.3px',
-            padding:'5px 12px',borderRadius:'999px',pointerEvents:'none',display:'block',
-            boxShadow:'0 2px 8px rgba(0,0,0,0.35)'});
+          // at zoom:0.5 + dSF:2, 1 CSS px ≈ 1 screenshot pixel, so these sizes are literal
+          Object.assign(w.style,{position:'fixed',left:'50%',bottom:'18px',transform:'translateX(-50%)',
+            zIndex:'2147483647',background:'rgba(11,22,40,0.88)',color:'#fff',
+            font:'700 22px -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif',letterSpacing:'0.5px',
+            padding:'10px 28px',borderRadius:'999px',pointerEvents:'none',display:'block',
+            boxShadow:'0 3px 14px rgba(0,0,0,0.45)'});
         });
         await p.waitForTimeout(120);
         await p.screenshot({path:`social/bluebird-${r.key}.png`, clip:{x:0,y:0,width:540,height:675}});
