@@ -24,7 +24,7 @@ const COMMON = '#freediving #spearfishing #scuba #diving #ocean #oceanconditions
 
 function caption(r){
   const m = REGION[r];
-  return `🤿 Tomorrow's best dive spots — ${m.name}.
+  return `🤿 This Saturday's best dive spots — ${m.name}.
 
 One honest score, 1–7: swell, wind, water clarity, tide & moon — combined into a single number. Free, no account. Full 7-day forecast for any spot at bluebirdday.app
 
