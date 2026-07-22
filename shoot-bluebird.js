@@ -53,13 +53,17 @@ const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full
         }
         // wait for THIS region to finish loading (loaded AND dropdown shows it)
         await p.waitForFunction((label)=>{ const t=document.body.innerText; const s=document.querySelector('select'); return t.includes('View full forecast') && !/Scoring \d+ spots/.test(t) && s && s.value===label; }, r.label, {timeout:90000});
-        // pick tomorrow's day chip (matched by day-of-month) and let it re-rank
+        // pick the coming Saturday's day chip (matched by day-of-month) and let it re-rank
         await p.evaluate((dom)=>{
           const btns=[...document.querySelectorAll('button')].filter(b=>/^(TODAY|MON|TUE|WED|THU|FRI|SAT|SUN)/.test(b.innerText.trim()));
           const t=btns.find(b=>b.innerText.trim().split('\n').pop()===dom);
           t&&t.click();
         }, TARGET_DOM);
-        await p.waitForTimeout(1200);
+        // Brief pause to let the re-score kick in (old results clear / "Scoring X spots" appears)
+        await p.waitForTimeout(1500);
+        // Now wait for ALL spots to finish scoring before we screenshot
+        await p.waitForFunction(LOADED, undefined, {timeout:90000}).catch(()=>{});
+        await p.waitForTimeout(500);
         // Slight zoom out so top 5 spots are visible (effective viewport height ~794px)
         await p.evaluate(()=>{ document.documentElement.style.zoom='0.85'; });
         await p.waitForTimeout(400);
