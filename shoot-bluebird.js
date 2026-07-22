@@ -11,11 +11,12 @@ const REGIONS=[
   {key:'nsw', label:'Australia — New South Wales'},
   {key:'wa',  label:'Australia — Western Australia'},
 ];
-// "Next day" = tomorrow in Brisbane. Match the day chip by its day-of-month so
-// it's correct regardless of the runner's timezone. The browser runs in
-// Brisbane time so the app's own "TODAY" chip lines up too.
+// Post the COMING SATURDAY's forecast (the job runs Wednesday, so people get a
+// few days to plan the weekend). Match the day chip by its day-of-month so it's
+// correct regardless of the runner's timezone. The browser runs in Brisbane time
+// so the app's own day chips line up.
 const bne=new Date(new Date().toLocaleString('en-US',{timeZone:'Australia/Brisbane'}));
-bne.setDate(bne.getDate()+1);
+bne.setDate(bne.getDate() + ((6 - bne.getDay() + 7) % 7)); // jump to the coming Saturday (0=Sun..6=Sat)
 const TARGET_DOM=String(bne.getDate());
 
 const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full forecast') && !/Scoring \d+ spots/.test(t); };
