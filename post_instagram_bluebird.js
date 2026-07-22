@@ -28,7 +28,7 @@ function caption(r){
 
 One honest score, 1–7: swell, wind, water clarity, tide & moon — combined into a single number. Free, no account.
 
-🔗 bluebirdday.app
+🔗 Link in bio → bluebirdday.app
 
 ${m.tags} ${COMMON}`;
 }
