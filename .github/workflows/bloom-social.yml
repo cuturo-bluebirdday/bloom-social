@@ -1,8 +1,17 @@
-name: Bloom Social (daily Instagram)
+name: Bloom Social (weekly Instagram)
+# v2.4 (2026-07-22)
+# Runs WEEKLY on Wednesday 3am Brisbane — same slot as Bluebird — so both apps
+# post together and the grid stays in sync. Screenshots 3 map regions, commits
+# them for public raw URLs, then posts to Instagram.
+#
+# v2.4: Changed from daily 6pm to weekly Wed 3am Brisbane (same as Bluebird).
+# v2.3: SIMPLIFIED — self-contained single schedule, no cross-repo ig-trigger.
+# v2.2: removed own schedule (was double-posting with ig-trigger).
+# v2.1: commit/push step continue-on-error so a repo race can't kill the IG post.
 on:
-  workflow_dispatch:
+  workflow_dispatch:          # manual runs — fire it by hand to test on demand
   schedule:
-    - cron: '0 8 * * *'
+    - cron: '0 17 * * 2'      # Tue 17:00 UTC = Wed 3am Brisbane — weekly, same slot as Bluebird
 concurrency:
   group: bloom-social
   cancel-in-progress: false
@@ -12,6 +21,12 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Show trigger
+        run: |
+          echo "Triggered by: ${{ github.event_name }}"
+          echo "Branch/ref:  ${{ github.ref_name }}"
+          echo "UTC now:     $(date -u)"
+          echo "Brisbane:    $(TZ=Australia/Brisbane date)"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -31,7 +46,7 @@ jobs:
           git add social/ || true
           git commit -m "social: $(TZ=Australia/Brisbane date +%F)" || echo "nothing to commit"
           git pull --rebase origin ${{ github.ref_name }} || echo "rebase skipped"
-          git push || echo "push failed (non-fatal)"
+          git push || echo "push failed (non-fatal) — images still available from prior commit"
       - name: Post to Instagram
         env:
           IG_USER_ID:      ${{ secrets.IG_USER_ID }}
