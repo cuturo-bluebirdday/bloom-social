@@ -1,0 +1,25 @@
+name: Bluebird — Delete recent IG posts
+# Manual trigger only. Deletes any Bluebird posts (caption starts with the dive emoji)
+# from the last HOURS_BACK hours (default 48). Run this before re-posting.
+on:
+  workflow_dispatch:
+    inputs:
+      hours_back:
+        description: 'Delete posts from the last N hours (default 48)'
+        required: false
+        default: '48'
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Delete recent Bluebird IG posts
+        env:
+          IG_USER_ID:      ${{ secrets.BLUEBIRD_IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.BLUEBIRD_IG_ACCESS_TOKEN }}
+          HOURS_BACK:      ${{ github.event.inputs.hours_back }}
+        run: node delete_instagram_bluebird.js
+
