@@ -60,13 +60,12 @@ const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full
           t&&t.click();
         }, TARGET_DOM);
         await p.waitForTimeout(1200);
-        // Zoom out to ~50% so ~8 spots are visible instead of ~4
-        await p.evaluate(()=>{ document.documentElement.style.zoom='0.5'; });
+        // Slight zoom out so top 5 spots are visible (effective viewport height ~794px)
+        await p.evaluate(()=>{ document.documentElement.style.zoom='0.85'; });
         await p.waitForTimeout(400);
         // hide the fixed "Beta" disclaimer bar / any high-z toast
         await p.evaluate(()=>{
           [...document.querySelectorAll('body *')].forEach(el=>{
-            if(el.id==='bb-watermark') return; // never hide our own stamp
             const s=getComputedStyle(el);
             if(s.position==='fixed'){
               const t=el.innerText||'';
@@ -74,20 +73,7 @@ const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full
             }
           });
         });
-        await p.waitForTimeout(200);
-        // stamp the website on the image so it travels with any repost/screenshot
-        await p.evaluate(()=>{
-          let w=document.getElementById('bb-watermark');
-          if(!w){ w=document.createElement('div'); w.id='bb-watermark'; document.body.appendChild(w); }
-          w.textContent='bluebirdday.app';
-          // at zoom:0.5 + dSF:2, 1 CSS px ≈ 1 screenshot pixel, so these sizes are literal
-          Object.assign(w.style,{position:'fixed',left:'50%',bottom:'18px',transform:'translateX(-50%)',
-            zIndex:'2147483647',background:'rgba(11,22,40,0.88)',color:'#fff',
-            font:'700 22px -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif',letterSpacing:'0.5px',
-            padding:'10px 28px',borderRadius:'999px',pointerEvents:'none',display:'block',
-            boxShadow:'0 3px 14px rgba(0,0,0,0.45)'});
-        });
-        await p.waitForTimeout(120);
+        await p.waitForTimeout(300);
         await p.screenshot({path:`social/bluebird-${r.key}.png`, clip:{x:0,y:0,width:540,height:675}});
         valid.push(r.key);
         console.log('shot',r.key);
