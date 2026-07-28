@@ -7,9 +7,9 @@ const {chromium}=require('playwright');
 const fs=require('fs');
 const APP=process.env.APP_URL || 'https://bluebirdday.app';
 const REGIONS=[
-  {key:'qld', label:'Australia — Queensland'},
+  {key:'qld', label:'Australia — Queensland — Southeast'},
   {key:'nsw', label:'Australia — New South Wales'},
-  {key:'wa',  label:'Australia — Western Australia'},
+  {key:'wa',  label:'Australia — Western Australia — Perth & Coral Coast'},
 ];
 // Post the COMING SATURDAY's forecast (the job runs Wednesday, so people get a
 // few days to plan the weekend). Match the day chip by its day-of-month so it's
