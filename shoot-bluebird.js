@@ -33,7 +33,7 @@ const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full
     await p.evaluate(()=>{ const x=[...document.querySelectorAll('button')].find(b=>/BEST SPOT/.test(b.innerText)); x&&x.click(); });
     await p.waitForSelector('select',{timeout:15000});
     // let the default region (Queensland) auto-load fully before touching anything
-    await p.waitForFunction(LOADED, undefined, {timeout:90000});
+    await p.waitForFunction(LOADED, undefined, {timeout:150000});
 
     for(const r of REGIONS){
       try{
@@ -52,7 +52,7 @@ const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full
           await p.waitForFunction(()=>{ const t=document.body.innerText; return /Scoring \d+ spots/.test(t) || !t.includes('View full forecast'); }, undefined, {timeout:20000}).catch(()=>{});
         }
         // wait for THIS region to finish loading (loaded AND dropdown shows it)
-        await p.waitForFunction((label)=>{ const t=document.body.innerText; const s=document.querySelector('select'); return t.includes('View full forecast') && !/Scoring \d+ spots/.test(t) && s && s.value===label; }, r.label, {timeout:90000});
+        await p.waitForFunction((label)=>{ const t=document.body.innerText; const s=document.querySelector('select'); return t.includes('View full forecast') && !/Scoring \d+ spots/.test(t) && s && s.value===label; }, r.label, {timeout:150000});
         // pick the coming Saturday's day chip (matched by day-of-month) and let it re-rank
         await p.evaluate((dom)=>{
           const btns=[...document.querySelectorAll('button')].filter(b=>/^(TODAY|MON|TUE|WED|THU|FRI|SAT|SUN)/.test(b.innerText.trim()));
@@ -62,7 +62,7 @@ const LOADED=()=>{ const t=document.body.innerText; return t.includes('View full
         // Brief pause to let the re-score kick in (old results clear / "Scoring X spots" appears)
         await p.waitForTimeout(1500);
         // Now wait for ALL spots to finish scoring before we screenshot
-        await p.waitForFunction(LOADED, undefined, {timeout:90000}).catch(()=>{});
+        await p.waitForFunction(LOADED, undefined, {timeout:150000}).catch(()=>{});
         await p.waitForTimeout(500);
         // Slight zoom out so top 5 spots are visible (effective viewport height ~794px)
         await p.evaluate(()=>{ document.documentElement.style.zoom='0.85'; });
