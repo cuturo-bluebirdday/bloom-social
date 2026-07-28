@@ -16,9 +16,9 @@ const G = `https://graph.facebook.com/${V}`;
 // qld first and wa last puts WA on the left, NSW centre, QLD on the right.
 const ORDER = ['qld','nsw','wa'];
 const REGION = {
-  qld: { name:'Queensland',        tags:'#queensland #goldcoast #sunshinecoast #straddie #moretonbay #brisbane #greatbarrierreef' },
+  qld: { name:'Queensland — Southeast',        tags:'#brisbane #goldcoast #sunshinecoast #straddie #moretonbay #queensland #seqld' },
   nsw: { name:'New South Wales',   tags:'#sydney #newsouthwales #byronbay #maroubra #manly #shellybeach #jervisbay' },
-  wa:  { name:'Western Australia', tags:'#perth #westernaustralia #rottnest #ningaloo #exmouth #coralbay #busselton' },
+  wa:  { name:'Western Australia — Perth & Coral Coast', tags:'#perth #westernaustralia #rottnest #perthbeaches #jurienbay #abrolhosislands #coralcoast' },
 };
 const COMMON = '#freediving #spearfishing #scuba #diving #ocean #oceanconditions #australia #divelife #saltlife';
 
