@@ -1,4 +1,4 @@
-name: Bluebird Social (weekly Instagram)
+name: Bluebird Social (weekly Instagram + Facebook)
 # Mirrors Bloom's pipeline. Runs Wednesday 3am Brisbane and posts the COMING
 # SATURDAY's forecast so people have a few days to plan the weekend.
 # Screenshots the 3 regional BEST SPOT views (QLD, NSW, WA), commits them for
@@ -44,3 +44,19 @@ jobs:
           IG_ACCESS_TOKEN: ${{ secrets.BLUEBIRD_IG_ACCESS_TOKEN }}
           GITHUB_RUN_ID:   ${{ github.run_id }}
         run: node post_instagram_bluebird.js
+
+      # ONE combined Facebook Page post: an AI-written weekend caption + all 3
+      # region screenshots. Runs even if the Instagram step failed (independent),
+      # as long as the screenshots were produced. Skips cleanly if FB secrets are
+      # absent so the workflow never breaks before you've set them up.
+      - name: Post to Facebook Page (AI caption + gallery)
+        if: always()
+        env:
+          FB_PAGE_ID:           ${{ secrets.BLUEBIRD_FB_PAGE_ID }}
+          FB_PAGE_ACCESS_TOKEN: ${{ secrets.BLUEBIRD_FB_PAGE_TOKEN }}
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          AI_MODEL:             ${{ vars.BLUEBIRD_AI_MODEL }}
+          GITHUB_RUN_ID:        ${{ github.run_id }}
+        run: |
+          if [ -z "$FB_PAGE_ID" ]; then echo "FB secrets not set yet — skipping Facebook step"; exit 0; fi
+          node post_facebook_bluebird.js
