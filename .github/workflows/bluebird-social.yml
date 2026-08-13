@@ -1,5 +1,5 @@
 name: Bluebird Social (weekly Instagram + Facebook)
-# Mirrors Bloom's pipeline. Runs Thursday 5pm Brisbane and posts the COMING
+# Mirrors Bloom's pipeline. Runs Thursday 5am Brisbane and posts the COMING
 # SATURDAY's forecast so people can plan the weekend.
 # Screenshots the 3 regional BEST SPOT views (QLD, NSW, WA), commits them for
 # public raw URLs, then posts ONE separate single-image post per region
@@ -8,7 +8,7 @@ name: Bluebird Social (weekly Instagram + Facebook)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 7 * * 4'        # Thu 07:00 UTC = Thu 5pm Brisbane (weekly weekend forecast)
+    - cron: '0 19 * * 3'        # Wed 19:00 UTC = Thu 5am Brisbane (weekly weekend forecast)
 concurrency:
   group: bluebird-social
   cancel-in-progress: false
