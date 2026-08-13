@@ -29,6 +29,7 @@ jobs:
           ./venv/bin/pip install -q rasterio scipy scikit-image xarray netcdf4 shapely \
             "dask[dataframe]" distributed numba matplotlib pyyaml click pandas pyarrow cmcrameri
           ./venv/bin/pip install -q --no-deps ./S2Shores
+          ./venv/bin/pip install -q "numpy<2"
           ./venv/bin/python -c "from osgeo import gdal; import s2shores; print('READY - GDAL', gdal.__version__)"
 
       - name: Download scene subset from public GCS bucket
