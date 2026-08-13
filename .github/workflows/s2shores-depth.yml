@@ -140,7 +140,7 @@ jobs:
         if: always()
         run: |
           {
-            echo "## S2Shores depth proof â Fish Rock (E504154 N6583496, UTM 56S)"
+            echo "## S2Shores depth proof - Fish Rock (E504154 N6583496, UTM 56S)"
             echo "Known real depth ~20-24 m. GEBCO wrongly said 4 m."
             echo ""
             echo "### Downloaded files"
