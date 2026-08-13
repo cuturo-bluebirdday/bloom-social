@@ -1,7 +1,7 @@
 name: S2Shores Depth Proof (Fish Rock)
-# Wave-inversion bathymetry over a 5x5 grid of points around Fish Rock Cave,
-# from the FREE public Sentinel-2 bucket (no credentials). Period cap relaxed to
-# 40 s so estimates are not all filtered. Results written to the run Step Summary.
+# Wave-inversion bathymetry over Gold Coast dive spots (Palm Beach, Currumbin,
+# Kirra, Burleigh), 3x3 grid each, from the FREE public Sentinel-2 bucket.
+# Scene S2B 2026-07-28 T56JNP (2.4% cloud, same pass that read clean at Fish Rock).
 on:
   workflow_dispatch:
 
@@ -26,7 +26,6 @@ jobs:
           ./venv/bin/pip install -q rasterio xarray netcdf4 shapely \
             "dask[dataframe]" distributed numba matplotlib pyyaml click pandas pyarrow cmcrameri
           ./venv/bin/pip install -q --no-deps ./S2Shores
-          # system GDAL gdal_array is built against NumPy 1.x; keep the whole stack on NumPy 1.x
           ./venv/bin/pip install -q "numpy<2" "scipy<1.14" "scikit-image<0.25"
           ./venv/bin/python -c "import numpy; from osgeo import gdal, gdal_array; import s2shores; print('READY - GDAL', gdal.__version__, 'NumPy', numpy.__version__)"
 
@@ -34,8 +33,8 @@ jobs:
         run: |
           set -e
           BUCKET=gcp-public-data-sentinel-2
-          PROD=S2B_MSIL1C_20260728T235229_N0512_R130_T56JNL_20260729T021752.SAFE
-          PREFIX=tiles/56/J/NL/$PROD/
+          PROD=S2B_MSIL1C_20260728T235229_N0512_R130_T56JNP_20260729T021752.SAFE
+          PREFIX=tiles/56/J/NP/$PROD/
           : > objects.txt
           PAGE=""
           while : ; do
@@ -51,13 +50,13 @@ jobs:
           grep -E '(MTD_MSIL1C\.xml$|/MTD_TL\.xml$|/QI_DATA/|_B02\.jp2$|_B04\.jp2$)' objects.txt > keep.txt
           echo "Downloading $(wc -l < keep.txt) files"
           while read -r OBJ; do
-            REL="${OBJ#tiles/56/J/NL/}"
+            REL="${OBJ#tiles/56/J/NP/}"
             DEST="scene/$REL"
             mkdir -p "$(dirname "$DEST")"
             curl -sS "https://storage.googleapis.com/$BUCKET/$OBJ" -o "$DEST"
           done < keep.txt
 
-      - name: Write config + grid points
+      - name: Write config + spot grids
         run: |
           mkdir -p out out/debug
           cat > config.yaml <<'YAML'
@@ -114,35 +113,46 @@ jobs:
           YAML
           cat > point.yaml <<'YAML'
           DEBUG_POINTS:
-            - [503654, 6582996]
-            - [503904, 6582996]
-            - [504154, 6582996]
-            - [504404, 6582996]
-            - [504654, 6582996]
-            - [503654, 6583246]
-            - [503904, 6583246]
-            - [504154, 6583246]
-            - [504404, 6583246]
-            - [504654, 6583246]
-            - [503654, 6583496]
-            - [503904, 6583496]
-            - [504154, 6583496]
-            - [504404, 6583496]
-            - [504654, 6583496]
-            - [503654, 6583746]
-            - [503904, 6583746]
-            - [504154, 6583746]
-            - [504404, 6583746]
-            - [504654, 6583746]
-            - [503654, 6583996]
-            - [503904, 6583996]
-            - [504154, 6583996]
-            - [504404, 6583996]
-            - [504654, 6583996]
+            - [546012, 6889598]
+            - [546012, 6889748]
+            - [546012, 6889898]
+            - [546162, 6889598]
+            - [546162, 6889748]
+            - [546162, 6889898]
+            - [546312, 6889598]
+            - [546312, 6889748]
+            - [546312, 6889898]
+            - [547771, 6887486]
+            - [547771, 6887636]
+            - [547771, 6887786]
+            - [547921, 6887486]
+            - [547921, 6887636]
+            - [547921, 6887786]
+            - [548071, 6887486]
+            - [548071, 6887636]
+            - [548071, 6887786]
+            - [551686, 6884478]
+            - [551686, 6884628]
+            - [551686, 6884778]
+            - [551836, 6884478]
+            - [551836, 6884628]
+            - [551836, 6884778]
+            - [551986, 6884478]
+            - [551986, 6884628]
+            - [551986, 6884778]
+            - [544647, 6892262]
+            - [544647, 6892412]
+            - [544647, 6892562]
+            - [544797, 6892262]
+            - [544797, 6892412]
+            - [544797, 6892562]
+            - [544947, 6892262]
+            - [544947, 6892412]
+            - [544947, 6892562]
           YAML
-          echo "config + 25 grid points written"
+          echo "config + 36 points written"
 
-      - name: Run S2Shores (POINT grid, Fish Rock)
+      - name: Run S2Shores (POINT grid, Gold Coast)
         run: |
           SCENE=$(find scene -maxdepth 1 -type d -name '*.SAFE')
           echo "SCENE=$SCENE"
@@ -154,63 +164,52 @@ jobs:
             --debug_file point.yaml \
             --debug_path out/debug \
             --delta_times_dir S2Shores/src/s2shores/bathylauncher/config/CNES > s2shores.log 2>&1 || echo "S2SHORES_EXIT=$?" >> s2shores.log
-          echo "=== log tail ==="; tail -25 s2shores.log
+          echo "=== log tail ==="; tail -15 s2shores.log
           echo "=== outputs ==="; find out -maxdepth 2 -name '*.nc' -exec ls -la {} \;
 
-      - name: Read depth grid + write summary
+      - name: Read depths per spot + write summary
         if: always()
         run: |
           {
-            echo "## S2Shores depth grid - Fish Rock (5x5, 250 m spacing, MAX_T=40 s)"
-            echo "Center E504154 N6583496 (UTM 56S). Known real depth ~20-24 m."
+            echo "## S2Shores depth - Gold Coast spots (3x3 grid each, MAX_T=40 s)"
+            echo "Scene S2B 2026-07-28 T56JNP, 2.4% cloud."
             echo ""
-            echo "### S2Shores log (tail)"
-            echo '```'
-            tail -30 s2shores.log 2>/dev/null || echo "(no log)"
-            echo '```'
-            echo "### Per-point results"
+            echo "### Per-spot results"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           ./venv/bin/python - >> "$GITHUB_STEP_SUMMARY" <<'PY'
           import glob, numpy as np
-          try:
-              import xarray as xr
-          except Exception as e:
-              print("xarray missing", e); raise SystemExit
+          import xarray as xr
+          from collections import defaultdict
+          spots = [('PalmBeach', 546162, 6889748), ('Currumbin', 547921, 6887636), ('Kirra', 551836, 6884628), ('Burleigh', 544797, 6892412)]
           fs = sorted(glob.glob('out/**/*.nc', recursive=True))
-          print("NetCDF outputs:", fs)
           if not fs:
               print(">>> no NetCDF produced"); raise SystemExit
           ds = xr.open_dataset(fs[-1])
-          print("variables:", list(ds.variables))
           def col(*names):
-              for n in names:
+              for nm in names:
                   for v in ds.variables:
-                      if v.lower()==n:
-                          return np.ravel(ds[v].values)
+                      if v.lower()==nm: return np.ravel(ds[v].values)
               return None
-          X=col('x'); Y=col('y'); D=col('depth','bathymetry','z')
-          S=col('status'); P=col('period'); W=col('wavelength'); DIR=col('direction_from_north','direction')
-          n = len(X) if X is not None else 0
-          print(f"points: {n}")
-          hdr = "  E        N          depth   status  period  wavelength  dir"
-          print(hdr)
-          valid=[]
+          X=col('x'); Y=col('y'); D=col('depth','bathymetry','z'); P=col('period')
+          n=len(X)
+          def nearest(e,nn):
+              return min(spots, key=lambda s:(s[1]-e)**2+(s[2]-nn)**2)[0]
+          g=defaultdict(list); rows=defaultdict(list)
           for i in range(n):
-              e = X[i] if X is not None else float('nan')
-              nn = Y[i] if Y is not None else float('nan')
-              d = D[i] if D is not None else float('nan')
-              s = S[i] if S is not None else float('nan')
-              p = P[i] if P is not None else float('nan')
-              w = W[i] if W is not None else float('nan')
-              dr = DIR[i] if DIR is not None else float('nan')
-              if D is not None and np.isfinite(d): valid.append(d)
-              print(f"{e:8.0f} {nn:9.0f}   {d:7.2f}  {s!s:>5}  {p:6.1f}  {w:9.1f}  {dr:6.1f}")
-          if valid:
-              va=np.array(valid)
-              print(f"\nvalid depths: {len(va)}/{n}  median={np.median(va):.1f} m  mean={np.mean(va):.1f} m  min={va.min():.1f}  max={va.max():.1f}  std={va.std():.1f}")
-          else:
-              print("\nno valid depth estimates survived filtering")
+              sname=nearest(X[i],Y[i])
+              d=D[i] if D is not None else float('nan')
+              p=P[i] if P is not None else float('nan')
+              rows[sname].append((d,p))
+              if D is not None and np.isfinite(d): g[sname].append(d)
+          for s in spots:
+              nm=s[0]; vals=g.get(nm,[])
+              periods=[f"{p:.0f}" for d,p in rows.get(nm,[]) if np.isfinite(d)]
+              if vals:
+                  va=np.array(vals)
+                  print(f"{nm:11s}: {len(vals)}/9 pts  median={np.median(va):5.1f} m  range {va.min():.1f}-{va.max():.1f}  periods={periods}s")
+              else:
+                  print(f"{nm:11s}: 0/9 pts  (no clean wave signal - too close to shore/surf)")
           PY
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
@@ -218,7 +217,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: s2shores-grid-out
+          name: s2shores-goldcoast-out
           path: |
             out
             s2shores.log
