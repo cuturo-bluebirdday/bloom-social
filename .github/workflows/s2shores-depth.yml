@@ -1,10 +1,7 @@
 name: S2Shores Depth Proof (Fish Rock)
-# One-shot wave-inversion bathymetry proof. Downloads only the bands S2Shores
-# needs (B02, B04, detector masks, metadata) for scene
-# S2B_MSIL1C_20260728T235229...T56JNL from the FREE public Sentinel-2 bucket
-# (no credentials), runs the CNES S2Shores model in POINT mode over Fish Rock
-# Cave (known real depth ~20-24 m; GEBCO wrongly said 4 m). Results are written
-# to the run's Step Summary so they are readable without opening raw logs.
+# Wave-inversion bathymetry over a 5x5 grid of points around Fish Rock Cave,
+# from the FREE public Sentinel-2 bucket (no credentials). Period cap relaxed to
+# 40 s so estimates are not all filtered. Results written to the run Step Summary.
 on:
   workflow_dispatch:
 
@@ -26,11 +23,12 @@ jobs:
         run: |
           python3 -m venv --system-site-packages venv
           ./venv/bin/pip install -q --upgrade pip
-          ./venv/bin/pip install -q rasterio scipy scikit-image xarray netcdf4 shapely \
+          ./venv/bin/pip install -q rasterio xarray netcdf4 shapely \
             "dask[dataframe]" distributed numba matplotlib pyyaml click pandas pyarrow cmcrameri
           ./venv/bin/pip install -q --no-deps ./S2Shores
+          # system GDAL gdal_array is built against NumPy 1.x; keep the whole stack on NumPy 1.x
           ./venv/bin/pip install -q "numpy<2" "scipy<1.14" "scikit-image<0.25"
-          ./venv/bin/python -c "from osgeo import gdal; import s2shores; print('READY - GDAL', gdal.__version__)"
+          ./venv/bin/python -c "import numpy; from osgeo import gdal, gdal_array; import s2shores; print('READY - GDAL', gdal.__version__, 'NumPy', numpy.__version__)"
 
       - name: Download scene subset from public GCS bucket
         run: |
@@ -51,17 +49,15 @@ jobs:
           echo "Objects in product: $(wc -l < objects.txt)"
           if [ ! -s objects.txt ]; then echo "::error::GCS listing empty"; exit 1; fi
           grep -E '(MTD_MSIL1C\.xml$|/MTD_TL\.xml$|/QI_DATA/|_B02\.jp2$|_B04\.jp2$)' objects.txt > keep.txt
-          echo "Downloading $(wc -l < keep.txt) files:"; cat keep.txt
+          echo "Downloading $(wc -l < keep.txt) files"
           while read -r OBJ; do
             REL="${OBJ#tiles/56/J/NL/}"
             DEST="scene/$REL"
             mkdir -p "$(dirname "$DEST")"
             curl -sS "https://storage.googleapis.com/$BUCKET/$OBJ" -o "$DEST"
           done < keep.txt
-          echo "=== downloaded tree ==="
-          find scene -type f -exec ls -la {} \;
 
-      - name: Write config + point
+      - name: Write config + grid points
         run: |
           mkdir -p out out/debug
           cat > config.yaml <<'YAML'
@@ -80,7 +76,7 @@ jobs:
             SM_LENGTH: 10
             MIN_D: 2
             MIN_T: 3
-            MAX_T: 25
+            MAX_T: 40
             MIN_WAVES_LINEARITY: 0.3
             MAX_WAVES_LINEARITY: 0.9
             DEPTH_EST_METHOD: "LINEAR"
@@ -118,11 +114,35 @@ jobs:
           YAML
           cat > point.yaml <<'YAML'
           DEBUG_POINTS:
+            - [503654, 6582996]
+            - [503904, 6582996]
+            - [504154, 6582996]
+            - [504404, 6582996]
+            - [504654, 6582996]
+            - [503654, 6583246]
+            - [503904, 6583246]
+            - [504154, 6583246]
+            - [504404, 6583246]
+            - [504654, 6583246]
+            - [503654, 6583496]
+            - [503904, 6583496]
             - [504154, 6583496]
+            - [504404, 6583496]
+            - [504654, 6583496]
+            - [503654, 6583746]
+            - [503904, 6583746]
+            - [504154, 6583746]
+            - [504404, 6583746]
+            - [504654, 6583746]
+            - [503654, 6583996]
+            - [503904, 6583996]
+            - [504154, 6583996]
+            - [504404, 6583996]
+            - [504654, 6583996]
           YAML
-          echo "config + point written"
+          echo "config + 25 grid points written"
 
-      - name: Run S2Shores (POINT mode, Fish Rock)
+      - name: Run S2Shores (POINT grid, Fish Rock)
         run: |
           SCENE=$(find scene -maxdepth 1 -type d -name '*.SAFE')
           echo "SCENE=$SCENE"
@@ -134,29 +154,21 @@ jobs:
             --debug_file point.yaml \
             --debug_path out/debug \
             --delta_times_dir S2Shores/src/s2shores/bathylauncher/config/CNES > s2shores.log 2>&1 || echo "S2SHORES_EXIT=$?" >> s2shores.log
-          echo "=== S2Shores log tail ==="; tail -60 s2shores.log
-          echo "=== output files ==="; find out -type f -exec ls -la {} \;
+          echo "=== log tail ==="; tail -25 s2shores.log
+          echo "=== outputs ==="; find out -maxdepth 2 -name '*.nc' -exec ls -la {} \;
 
-      - name: Read depth + write summary
+      - name: Read depth grid + write summary
         if: always()
         run: |
           {
-            echo "## S2Shores depth proof - Fish Rock (E504154 N6583496, UTM 56S)"
-            echo "Known real depth ~20-24 m. GEBCO wrongly said 4 m."
+            echo "## S2Shores depth grid - Fish Rock (5x5, 250 m spacing, MAX_T=40 s)"
+            echo "Center E504154 N6583496 (UTM 56S). Known real depth ~20-24 m."
             echo ""
-            echo "### Downloaded files"
-            echo '```'
-            find scene -type f 2>/dev/null | sed 's#scene/##' | sort
-            echo '```'
             echo "### S2Shores log (tail)"
             echo '```'
-            tail -60 s2shores.log 2>/dev/null || echo "(no log)"
+            tail -30 s2shores.log 2>/dev/null || echo "(no log)"
             echo '```'
-            echo "### Output files"
-            echo '```'
-            find out -type f -exec ls -la {} \; 2>/dev/null || echo "(none)"
-            echo '```'
-            echo "### Depth result"
+            echo "### Per-point results"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           ./venv/bin/python - >> "$GITHUB_STEP_SUMMARY" <<'PY'
@@ -164,31 +176,49 @@ jobs:
           try:
               import xarray as xr
           except Exception as e:
-              print("xarray missing", e)
-              xr=None
+              print("xarray missing", e); raise SystemExit
           fs = sorted(glob.glob('out/**/*.nc', recursive=True))
           print("NetCDF outputs:", fs)
-          hit=False
-          if xr:
-              for f in fs:
-                  try:
-                      ds=xr.open_dataset(f)
-                  except Exception as e:
-                      print("skip",f,e); continue
-                  print("---",f,"vars:", list(ds.variables))
-                  for name in ds.variables:
-                      if name.lower() in ('depth','bathymetry','z'):
-                          print(">>>",name,"=", np.ravel(ds[name].values)); hit=True
-          if not hit:
-              print(">>> No depth variable found in NetCDF outputs")
+          if not fs:
+              print(">>> no NetCDF produced"); raise SystemExit
+          ds = xr.open_dataset(fs[-1])
+          print("variables:", list(ds.variables))
+          def col(*names):
+              for n in names:
+                  for v in ds.variables:
+                      if v.lower()==n:
+                          return np.ravel(ds[v].values)
+              return None
+          X=col('x'); Y=col('y'); D=col('depth','bathymetry','z')
+          S=col('status'); P=col('period'); W=col('wavelength'); DIR=col('direction_from_north','direction')
+          n = len(X) if X is not None else 0
+          print(f"points: {n}")
+          hdr = "  E        N          depth   status  period  wavelength  dir"
+          print(hdr)
+          valid=[]
+          for i in range(n):
+              e = X[i] if X is not None else float('nan')
+              nn = Y[i] if Y is not None else float('nan')
+              d = D[i] if D is not None else float('nan')
+              s = S[i] if S is not None else float('nan')
+              p = P[i] if P is not None else float('nan')
+              w = W[i] if W is not None else float('nan')
+              dr = DIR[i] if DIR is not None else float('nan')
+              if D is not None and np.isfinite(d): valid.append(d)
+              print(f"{e:8.0f} {nn:9.0f}   {d:7.2f}  {s!s:>5}  {p:6.1f}  {w:9.1f}  {dr:6.1f}")
+          if valid:
+              va=np.array(valid)
+              print(f"\nvalid depths: {len(va)}/{n}  median={np.median(va):.1f} m  mean={np.mean(va):.1f} m  min={va.min():.1f}  max={va.max():.1f}  std={va.std():.1f}")
+          else:
+              print("\nno valid depth estimates survived filtering")
           PY
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload full output
+      - name: Upload output
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: s2shores-out
+          name: s2shores-grid-out
           path: |
             out
             s2shores.log
