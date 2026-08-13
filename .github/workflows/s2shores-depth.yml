@@ -1,0 +1,170 @@
+name: S2Shores Depth Proof (Fish Rock)
+# One-shot wave-inversion bathymetry proof. Downloads only the bands S2Shores
+# needs (B02, B04, detector masks, metadata) for scene
+# S2B_MSIL1C_20260728T235229...T56JNL from the FREE public Sentinel-2 bucket
+# (no credentials), runs the CNES S2Shores model in POINT mode over Fish Rock
+# Cave (known real depth ~20-24 m; GEBCO wrongly said 4 m), and prints the depth.
+on:
+  workflow_dispatch:
+
+jobs:
+  depth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: System deps (GDAL + jq)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gdal-bin libgdal-dev python3-gdal jq
+          gdalinfo --version
+
+      - name: Clone S2Shores (code + CNES delta-time tables)
+        run: git clone --depth 1 https://github.com/CNES/S2Shores.git S2Shores
+
+      - name: Python environment
+        run: |
+          python3 -m venv --system-site-packages venv
+          ./venv/bin/pip install -q --upgrade pip
+          ./venv/bin/pip install -q rasterio scipy scikit-image xarray netcdf4 shapely \
+            "dask[dataframe]" distributed numba matplotlib pyyaml click pandas pyarrow cmcrameri
+          ./venv/bin/pip install -q --no-deps ./S2Shores
+          ./venv/bin/python -c "from osgeo import gdal; import s2shores; print('READY - GDAL', gdal.__version__)"
+
+      - name: Download scene subset from public GCS bucket
+        run: |
+          set -e
+          BUCKET=gcp-public-data-sentinel-2
+          PROD=S2B_MSIL1C_20260728T235229_N0512_R130_T56JNL_20260729T021752.SAFE
+          PREFIX=tiles/56/J/NL/$PROD/
+          : > objects.txt
+          PAGE=""
+          while : ; do
+            URL="https://storage.googleapis.com/storage/v1/b/$BUCKET/o?prefix=$PREFIX&maxResults=1000"
+            [ -n "$PAGE" ] && URL="$URL&pageToken=$PAGE"
+            curl -sS "$URL" -o page.json
+            jq -r '.items[]?.name' page.json >> objects.txt
+            PAGE=$(jq -r '.nextPageToken // empty' page.json)
+            [ -z "$PAGE" ] && break
+          done
+          echo "Objects in product: $(wc -l < objects.txt)"
+          if [ ! -s objects.txt ]; then echo "::error::GCS listing empty - scene not on public bucket"; exit 1; fi
+          # keep only what S2Shores reads: both metadata XMLs, the B02/B04 10m bands, and QI_DATA detector masks
+          grep -E '(MTD_MSIL1C\.xml$|/MTD_TL\.xml$|/QI_DATA/|_B02\.jp2$|_B04\.jp2$)' objects.txt > keep.txt
+          echo "Downloading $(wc -l < keep.txt) files:"; cat keep.txt
+          while read -r OBJ; do
+            REL="${OBJ#tiles/56/J/NL/}"
+            DEST="scene/$REL"
+            mkdir -p "$(dirname "$DEST")"
+            curl -sS "https://storage.googleapis.com/$BUCKET/$OBJ" -o "$DEST"
+          done < keep.txt
+          echo "=== downloaded tree ==="
+          find scene -type f | sed 's#scene/##' | sort
+
+      - name: Write config + point
+        run: |
+          mkdir -p out out/debug
+          cat > config.yaml <<'YAML'
+          GLOBAL_ESTIMATOR:
+            WAVE_EST_METHOD: "SPATIAL_DFT"
+            SELECTED_FRAMES:
+              - "B02"
+              - "B04"
+            OUTPUT_FORMAT: "POINT"
+            DXP: 100.0
+            DYP: 100.0
+            LAYERS_TYPE: "DEBUG"
+            NKEEP: 3
+            OFFSHORE_LIMIT: 200
+            WINDOW: 800.0
+            SM_LENGTH: 10
+            MIN_D: 2
+            MIN_T: 3
+            MAX_T: 25
+            MIN_WAVES_LINEARITY: 0.3
+            MAX_WAVES_LINEARITY: 0.9
+            DEPTH_EST_METHOD: "LINEAR"
+          SPATIAL_DFT:
+            PROMINENCE_MAX_PEAK: 0.3
+            PROMINENCE_MULTIPLE_PEAKS: 0.1
+            UNWRAP_PHASE_SHIFT: False
+            ANGLE_AROUND_PEAK_DIR: 10
+            STEP_T: 0.05
+            DEBUG:
+              PLOT_MAX: 135
+              PLOT_MIN: -135
+          TEMPORAL_CORRELATION:
+            TEMPORAL_LAG: 3
+            PERCENTAGE_POINTS: 1
+            TUNING:
+              DETREND_TIME_SERIES: 1
+              FILTER_TIME_SERIES: 1
+              LOWCUT_PERIOD: 25
+              HIGHCUT_PERIOD: 8
+              PEAK_DETECTION_HEIGHT_RATIO: 0.3
+              PEAK_DETECTION_DISTANCE_RATIO: 0.5
+              RATIO_SIZE_CORRELATION: 1
+              MEDIAN_FILTER_KERNEL_RATIO_SINOGRAM: 0.25
+              MEAN_FILTER_KERNEL_SIZE_SINOGRAM: 5
+              SIGMA_CORRELATION_MASK: 2
+              MEDIAN_FILTER_KERNEL: 5
+          SPATIAL_CORRELATION:
+            CORRELATION_MODE: 'full'
+            AUGMENTED_RADON_FACTOR: 0.01
+            PEAK_POSITION_MAX_FACTOR: 0.8
+            DEBUG:
+              PLOT_MAX: 135
+              PLOT_MIN: -135
+          YAML
+          cat > point.yaml <<'YAML'
+          DEBUG_POINTS:
+            - [504154, 6583496]
+          YAML
+          echo "config + point written"
+
+      - name: Run S2Shores (POINT mode, Fish Rock)
+        run: |
+          SCENE=$(find scene -maxdepth 1 -type d -name '*.SAFE')
+          echo "SCENE=$SCENE"
+          ./venv/bin/s2shores \
+            --input_product "$SCENE" \
+            --product_type S2 \
+            --output_dir out \
+            --config_file config.yaml \
+            --debug_file point.yaml \
+            --debug_path out/debug \
+            --delta_times_dir S2Shores/src/s2shores/bathylauncher/config/CNES 2>&1 | tail -60 || true
+          echo "=== output files ==="
+          find out -type f | sort
+
+      - name: Read depth from result
+        run: |
+          ./venv/bin/python - <<'PY'
+          import glob, numpy as np
+          try:
+              import xarray as xr
+          except Exception as e:
+              print("xarray missing", e); raise
+          fs = sorted(glob.glob('out/**/*.nc', recursive=True))
+          print("NetCDF outputs:", fs)
+          hit = False
+          for f in fs:
+              try:
+                  ds = xr.open_dataset(f)
+              except Exception as e:
+                  print("skip", f, e); continue
+              print("---", f, "vars:", list(ds.variables))
+              for name in ds.variables:
+                  if name.lower() in ('depth','bathymetry','z'):
+                      vals = np.ravel(ds[name].values)
+                      print(f">>> {name} at Fish Rock:", vals)
+                      hit = True
+          if not hit:
+              print(">>> No depth variable found - inspect the uploaded artifact (out/debug).")
+          PY
+
+      - name: Upload full output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s2shores-out
+          path: out
