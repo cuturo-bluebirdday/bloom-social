@@ -3,7 +3,8 @@ name: S2Shores Depth Proof (Fish Rock)
 # needs (B02, B04, detector masks, metadata) for scene
 # S2B_MSIL1C_20260728T235229...T56JNL from the FREE public Sentinel-2 bucket
 # (no credentials), runs the CNES S2Shores model in POINT mode over Fish Rock
-# Cave (known real depth ~20-24 m; GEBCO wrongly said 4 m), and prints the depth.
+# Cave (known real depth ~20-24 m; GEBCO wrongly said 4 m). Results are written
+# to the run's Step Summary so they are readable without opening raw logs.
 on:
   workflow_dispatch:
 
@@ -47,8 +48,7 @@ jobs:
             [ -z "$PAGE" ] && break
           done
           echo "Objects in product: $(wc -l < objects.txt)"
-          if [ ! -s objects.txt ]; then echo "::error::GCS listing empty - scene not on public bucket"; exit 1; fi
-          # keep only what S2Shores reads: both metadata XMLs, the B02/B04 10m bands, and QI_DATA detector masks
+          if [ ! -s objects.txt ]; then echo "::error::GCS listing empty"; exit 1; fi
           grep -E '(MTD_MSIL1C\.xml$|/MTD_TL\.xml$|/QI_DATA/|_B02\.jp2$|_B04\.jp2$)' objects.txt > keep.txt
           echo "Downloading $(wc -l < keep.txt) files:"; cat keep.txt
           while read -r OBJ; do
@@ -58,7 +58,7 @@ jobs:
             curl -sS "https://storage.googleapis.com/$BUCKET/$OBJ" -o "$DEST"
           done < keep.txt
           echo "=== downloaded tree ==="
-          find scene -type f | sed 's#scene/##' | sort
+          find scene -type f -exec ls -la {} \;
 
       - name: Write config + point
         run: |
@@ -132,39 +132,62 @@ jobs:
             --config_file config.yaml \
             --debug_file point.yaml \
             --debug_path out/debug \
-            --delta_times_dir S2Shores/src/s2shores/bathylauncher/config/CNES 2>&1 | tail -60 || true
-          echo "=== output files ==="
-          find out -type f | sort
+            --delta_times_dir S2Shores/src/s2shores/bathylauncher/config/CNES > s2shores.log 2>&1 || echo "S2SHORES_EXIT=$?" >> s2shores.log
+          echo "=== S2Shores log tail ==="; tail -60 s2shores.log
+          echo "=== output files ==="; find out -type f -exec ls -la {} \;
 
-      - name: Read depth from result
+      - name: Read depth + write summary
+        if: always()
         run: |
-          ./venv/bin/python - <<'PY'
+          {
+            echo "## S2Shores depth proof â Fish Rock (E504154 N6583496, UTM 56S)"
+            echo "Known real depth ~20-24 m. GEBCO wrongly said 4 m."
+            echo ""
+            echo "### Downloaded files"
+            echo '```'
+            find scene -type f 2>/dev/null | sed 's#scene/##' | sort
+            echo '```'
+            echo "### S2Shores log (tail)"
+            echo '```'
+            tail -60 s2shores.log 2>/dev/null || echo "(no log)"
+            echo '```'
+            echo "### Output files"
+            echo '```'
+            find out -type f -exec ls -la {} \; 2>/dev/null || echo "(none)"
+            echo '```'
+            echo "### Depth result"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          ./venv/bin/python - >> "$GITHUB_STEP_SUMMARY" <<'PY'
           import glob, numpy as np
           try:
               import xarray as xr
           except Exception as e:
-              print("xarray missing", e); raise
+              print("xarray missing", e)
+              xr=None
           fs = sorted(glob.glob('out/**/*.nc', recursive=True))
           print("NetCDF outputs:", fs)
-          hit = False
-          for f in fs:
-              try:
-                  ds = xr.open_dataset(f)
-              except Exception as e:
-                  print("skip", f, e); continue
-              print("---", f, "vars:", list(ds.variables))
-              for name in ds.variables:
-                  if name.lower() in ('depth','bathymetry','z'):
-                      vals = np.ravel(ds[name].values)
-                      print(f">>> {name} at Fish Rock:", vals)
-                      hit = True
+          hit=False
+          if xr:
+              for f in fs:
+                  try:
+                      ds=xr.open_dataset(f)
+                  except Exception as e:
+                      print("skip",f,e); continue
+                  print("---",f,"vars:", list(ds.variables))
+                  for name in ds.variables:
+                      if name.lower() in ('depth','bathymetry','z'):
+                          print(">>>",name,"=", np.ravel(ds[name].values)); hit=True
           if not hit:
-              print(">>> No depth variable found - inspect the uploaded artifact (out/debug).")
+              print(">>> No depth variable found in NetCDF outputs")
           PY
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload full output
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: s2shores-out
-          path: out
+          path: |
+            out
+            s2shores.log
